@@ -193,3 +193,55 @@ lib_appFw.so  .rodata  0x3664A70
 2. 硬件路线（Pico / BootROM）dump 固件后离线分析
 
 **在拿到固件或映射表之前，继续扫描命令空间或备份属性都不会有收获。**
+
+---
+
+## 十一、`0x603/1`、`0x603/2` 无法按 ID 读写单个属性
+
+试过的 payload 格式（**全部返回 129**）：
+
+```
+（空）
+u32(1208) / u16(1208) / u64(1208)
+u32(1208), u32(0)
+u32(1208), u32(1)
+u32(0), u32(1208)          ← ChipID 在前
+u32(1), u32(1208)
+u32(0), u32(1208), u32(4)
+u8(0), u32(1208)
+0x3E014D, 0x1B, 1208, 0        ← IPC 消息格式
+0x3E014D, 0x1B, 1208
+0x1B, 0x3E014D, 1208
+0x014D, 0x1B, 1208             ← u16 模块 ID
+1208, 0x3E014D, 0x1B
+1208, 0, 0, ...（padding）
+ASCII "1208"
+"/usr/lib/appFw.so"
+"appFw.so"
+16 × 0x00
+```
+
+而 `0x603/5` 读全量备份（2,253,564 字节）**不需要任何参数，正常返回**。
+
+**结论**：FX30 的 `0x603` 只提供「整包读」，没有「按 ID 读写单个属性」的 USB 通道。`bk.elf` 里的 `bk r [ChipID] BackupID` 是**相机内部命令行**接口，不适用于 USB 协议。
+
+---
+
+## 十二、两个容易走错的方向
+
+### `libInfraExtBackupCommunicator.so` 不是设置读写通道
+
+看名字容易误判。它是**远程备份通信**（网络/无线传照片）。
+
+- ExtCmd 模块 4 支持的命令只有 **`[1, 6, 7, 8, 9]`**（另有模式下 `1-5`）
+- 命令表硬编码在 `.data` 段：`0x151D0 → [1]`、`0x151D8 → [1,2,3,4,5]`、`0x151E8 → [1,6,7,8,9]`、`0x151F8 → [1]`
+- `(4,1) GetSupportedCommandIds` 的响应固定 8176 字节（`0x1FF0` 硬编码在 `0x2510: mov w0,#0x1ff0`）
+- `ExtBackupCommunicator::ReadBackup(int,int,void*)` 是内部方法，无 `bl` 直接调用（经函数指针）
+
+### `area_check_data.dat` 不是 BKID 映射表
+
+实际路径 `/usr/share/app/area_check_data.dat`（固件内 `share/app/`），1,367,894 字节，魔数 `UXAC`。
+
+内容是 **UI 字符串表**（条目里全是 `STRID_*`，如 `STRID_ALPNUM_12_V`），与 `BKID_*` 完全无关。搜索 `drive_mode_cont_shooting` 在该文件里 **0 命中**。
+
+**真正的 BKID 表在 `appFw.so` 的 `.data.rel.ro` 段**，结构 `{u64 name_ptr, u32 id, u32 extra}`，见 [`05-firmware-analysis.md`](05-firmware-analysis.md)。
