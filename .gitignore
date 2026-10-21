@@ -1,0 +1,29 @@
+# 绝不提交的内容
+
+# —— 设备数据与固件（最重要）——
+dump/
+*.bin
+*.raw
+*.dat
+backup*.txt
+*_backup*
+
+# —— PMCA 源码（请自行 clone 到此处）——
+pmca-src/
+
+# —— Python ——
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# —— 操作系统 ——
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# —— 编辑器 ——
+.vscode/
+.idea/
+*.swp

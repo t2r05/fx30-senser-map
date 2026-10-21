@@ -1,0 +1,127 @@
+# 此路不通的记录
+
+在 FX30 Ver.6.00 上**已实测排除**的方向，以及踩过的坑。记录下来是为了避免重复劳动——每一条都消耗了真实的试错时间。
+
+---
+
+## 一、文件通道不存在
+
+### `pFunc=0xff01`（FileControl）全部返回 128
+
+试过的路径（**全部 128**）：
+
+```
+/  /etc  /bin  /usr  /lib  /mnt  /opt  /tmp  /var  /proc
+/sys  /home  /root  /data  /system  /vendor
+/usr/lib/appFw.so      ← FireHydrant 在 A6700 上明示的正确文件
+/usr/lib/appFW.so      ← A7C2 工具日志中的大小写写法
+/usr/lib/libJit.so
+/etc/ld.so.preload
+/usr/lib/os-release
+```
+
+**结论**：不是路径错，是**接口在 FX30 上不响应**。因此「按路径读 `/usr/lib/appFw.so`」这条在 A6700 上成立的路，在 FX30 上走不通。
+
+---
+
+## 二、内存通道不存在
+
+### `pFunc=0xff03`（MemoryDump）全部返回 128
+
+| 基地址 | 长度 | 结果 |
+|---|---|---|
+| `0xFFFF0000`（BootROM，ILCE-7M4-RE 文档地址） | `0x6000` | **128** |
+| `0x00000000` | `0x1000` | **128** |
+| `0xFE000000`（eSRAM） | `0x1000` | **128** |
+| `0x400000000`（System RAM） | `0x1000` | 参数越界（`MemoryDumpHeader` 为 INT32） |
+
+**结论**：无法按地址 dump 内存/闪存。PMCA 的 `bootrom` 命令在 FX30 上不可用。
+
+---
+
+## 三、服务模式终端不可用
+
+`setTerminalEnable(True)` 后，`writeTerminal`（向 `epOut[1]=0x04` 写）**超时**：
+
+```
+libusb0-dll:err [_usb_reap_async] timeout error
+```
+
+- 端点确实存在：`epIn=[0x81,0x83]`，`epOut=[0x02,0x04]`（均为 bulk 512）
+- 注意：PMCA 的 `ep` 参数是**列表索引**而非端点地址，`ep=1` → `0x83`/`0x04`
+- `setTerminalEnable` 由两个包组成，第二个（AdjustControl `0x601/0x1f`）在 PMCA 中被 `try/except` 静默吞掉，**实际很可能失败**
+- YuuLuo 的协议记录也提示：**部分查询命令无响应，调用会使端点进入异常状态**
+
+**结论**：不要指望「进服务模式就能拿到 Linux shell」。这条在 FX30 上没通。
+
+---
+
+## 四、会话语义陷阱（最重要的一条）
+
+### 服务模式会话**不可复用**
+
+| 做法 | 结果 |
+|---|---|
+| 一次运行内「认证 → 操作 → 结束不 stop」（想留着会话下次用） | ❌ 下次重新认证时读超时：`reaping request failed, win error: 连接到系统的设备没有发挥作用` |
+| 每次从 MSC 干净起步 | ✅ 稳定 |
+
+**原因**：Jiritsu 会话有 `sequence`（从 1 递增）与设备句柄绑定，残留会话再认证即失效。
+
+**正确节奏**：
+
+```
+相机 MSC 模式 → 一次运行内完成认证与全部操作 → 发 StopSenser → 断电/拔插回 MSC
+```
+
+### 退出后不会自动回 MSC
+
+`StopSenser` 之后相机落到 **HID 模式（`054C:096F`, `svc=HidUsb`）**，`libusb`/PMCA 都识别不了。必须**拔插 Type-C**（通常即可）或取电池重启。
+
+---
+
+## 五、`0x60F` 区间会使端点异常
+
+`0x60F` 的 `cmd 1/2/3` 三个命令均触发 `GenericUsbException`，之后端点状态不可靠。**扫描时应跳过该区间。**
+
+---
+
+## 六、`0x603` 的参数格式未解
+
+`0x603 cmd1/2` 恒返回 `129`（命令存在、参数不对）。试过的 payload 全部无效：
+
+```
+（空）  u32(0)  u32(1)  ascii"0"  "/usr/lib/appFw.so\0"  "appFw.so\0"  16×0x00
+```
+
+即便 PMCA 的备份读取用 `dump32le(id)` 送 `id=0/1/2` 也是 `129`。
+
+**结论**：`0x603` 的 cmd1/2 参数格式与 PMCA 的实现不一致，未解。但 `cmd5`（PDT_READ）**不需要参数**即可读全量备份，已足够。
+
+---
+
+## 七、驱动选择：必须 libusbK，且两个设备都要换
+
+| 驱动 | 现象 |
+|---|---|
+| `libusb-win32`（`svc=libusb0`, v1.4.0.0） | 认证可过，但传输不稳；相机屏显「请检查所连接的设备」；`writeTerminal`/大批量读易超时 |
+| **`libusbK`（`svc=libusbK`, v3.1.0.0）** | **稳定** |
+
+**关键**：MSC 身份（`054C:0E0E`）与服务身份（`054C:0336`）是**两个独立设备**，**两个都要装 libusbK**。只换一个会导致服务模式下的传输失败。
+
+PMCA 文档推荐 `libusb-win32` 是基于老机型时代的说明，BIONZ XR 机型应使用 `libusbK`。
+
+---
+
+## 八、「请检查所连接的设备」是预期现象
+
+换成 libusbK 后，相机屏幕会显示「请检查所连接的设备 / 请检查 USB 连接设备」。
+
+**这不是故障**——libusbK 是不主动应答的裸端口驱动，不像 USBSTOR 那样做 SCSI 轮询，相机等不到应答就会提示。**只要 USB 枚举仍为 `054C:0E0E`，就说明 MSC 模式还在，可以继续。**
+
+---
+
+## 九、扫描的时间陷阱
+
+- 单次 `sendSenserPacket` 在命中大块数据时很慢（2.25 MB 一次）
+- 96 组盲扫会超过 7 分钟上限；**必须 `python -u` 无缓冲**，否则被 SIGTERM 杀掉时输出全丢
+- `0x611 cmd1` 每次返回 2 MB，扫到它要留足时间

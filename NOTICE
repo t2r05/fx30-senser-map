@@ -1,0 +1,50 @@
+FX30 Service Mode Research
+==========================
+
+本仓库是 ILME-FX30 固件 6.00 上 USB 服务会话（Senser / Jiritsu）的实测记录。
+
+## 边界声明
+
+本仓库**不包含**：
+
+- 相机固件二进制
+- 备份数据文件（`0x603 cmd5` 读出的内容）
+- 事件日志导出
+- 机身唯一信息（序列号、产品代码、USB 序列号）
+- 任何写入型脚本
+
+本仓库**包含**：方法论文档 + 只读探测脚本。
+
+## 许可
+
+文档内容采用 **CC BY-SA 4.0**（与上游 YuuLuo/a7c2-service-preload 保持一致）。
+`tools/` 下的脚本采用 **MIT**。
+
+## 依赖与来源
+
+`tools/` 下的 Python 脚本在运行时导入 [Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE)（MIT）的模块，
+不包含其代码副本。使用前请自行 clone 到 `pmca-src/`：
+
+```bash
+git clone https://github.com/ma1co/Sony-PMCA-RE.git pmca-src
+# 或中文版
+git clone https://gitee.com/shanyuduo/Sony-PMCA-CN.git pmca-src
+cd pmca-src && pip install -r requirements.txt
+```
+
+## 参考的公开工作
+
+| 项目 | 提供的内容 | 许可 |
+|---|---|---|
+| [Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE) | 认证帧格式、Senser 协议、`print_backup` 解析器、`senserKeys` 密钥表 | MIT |
+| [YuuLuo/a7c2-service-preload](https://github.com/YuuLuo/a7c2-service-preload) | Jiritsu 通道、`libJit.so` 加载入口、`/etc/ld.so.preload` 路线、完整协议描述（A7C II 2.01） | CC BY-SA 4.0 |
+| [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) | A6700 固件内存访问方法（`/proc/self/maps` 基址 + 两段偏移）、移植类改动方法论 | 未标注 |
+| [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) | A6700 服务通道与 Pico/BootROM 路线 | GPL-3.0 |
+| [ILCE-7M4-RE](https://github.com/DavidBuchanan314/ILCE-7M4-RE) | BootROM 串口引导、eMMC 加解密（无签名验证） | 见仓库 |
+
+## 免责
+
+- 本项目为**非官方**研究，与 Sony 无关。
+- 固件与设备研究存在风险，操作后果自负。
+- 文中结论仅对应 **ILME-FX30 Ver.6.00**；其他版本需自行复测。
+- 请勿上传固件二进制、备份文件或机身唯一信息。
