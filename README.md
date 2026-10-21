@@ -101,6 +101,39 @@ USB 枚举（MSC，054C:0E0E）
 
 ---
 
+## 最新进展（2026-10-21）：固件已解开，BKID 已定位
+
+> 早期版本的 README 判断「官方固件解不开」——**这个判断是错的，现已修正。**
+
+**官方 `BODYDATA.DAT` 可以解密。** 社区研究者已提取全部 CXD90057（BIONZ XR）设备的密钥，见 `ma1co/fwtool.py` **PR #52**。FX30 Ver.6.01 实测解包成功（81 秒），提取出 `appFw.so`（75.4 MB）。
+
+**从固件里定位到了连拍：**
+
+| 项 | 结果 |
+|---|---|
+| `BKID_APP_setting_drive_mode_cont_shooting` | **BKID = 1208** |
+| `..._cont_shooting_limited`（限制版） | **BKID = 1210** |
+| 连拍四档枚举 | `DRIVE_MODE_CONT_SHOOTING_OPTION_{HI_PLUS,HI,MID,LOW}` **全在** |
+| `customFps_Elec_*`（四档速度参数） | FX30 固件 **0 命中**（无速度调节项） |
+
+共提取 **768 条 BKID 映射**（覆盖所有 `BKID_APP_setting_*`）。
+
+**读写链路的反汇编结果：**
+
+```
+libbackup.so: Backup_read_setting_attr / Backup_write_setting_attr
+  → IPC { 模块 0x3E014D, 操作码 0x1B(读) / 0x1D(写) }
+  → osal_snd_msg（PLT 第5项，0x1530）
+  → bkdmn 守护进程
+  → ??? 这一段在 FX30 上未开放
+```
+
+完整方法见 [`docs/05-firmware-analysis.md`](docs/05-firmware-analysis.md)。
+
+**但关键结论没变**：驱动模式是**纯运行时内存状态**——不在备份里（4 轮 dump 实证）、状态命令读不出（22 行零差异）、`0x603/1` 任何参数格式都返回 129。**FX30 没有能改状态的通道，仍需硬件路线。**
+
+---
+
 ## 未能解决的问题（欢迎协作）
 
 **目标**：为 FX30 启用电子快门连拍（参考 FX3 的四档连拍、A6700 的电子快门 11fps）。
