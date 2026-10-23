@@ -170,6 +170,8 @@ docs/01-session.md       会话建立、驱动选择、会话语义陷阱
 docs/02-command-map.md   命令空间完整图谱（本次测绘核心产出）
 docs/03-backup.md        备份数据结构与 ID 布局验证
 docs/04-dead-ends.md     此路不通的记录（避免重复踩坑）
+docs/05-firmware-analysis.md  固件解密与 BKID 定位方法
+docs/06-related-projects.md   相关开源项目目录（其他作者，7 项）
 tools/                   只读探测脚本（Python / PowerShell）
 NOTICE                   来源与致谢
 ```
@@ -193,6 +195,8 @@ NOTICE                   来源与致谢
 - [YuuLuo/a7c2-service-preload](https://github.com/YuuLuo/a7c2-service-preload) — Jiritsu 通道与协议细节（A7C II 2.01）
 - [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) — A6700 的内存访问方法与移植方法论
 - [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) — A6700 服务通道与 Pico 路线
+
+完整相关开源项目目录（含 A7C2-FL23、ILCE-7M4-RE、Recipe Lab 等共 7 项）见 [`docs/06-related-projects.md`](docs/06-related-projects.md)。
 
 非官方项目，与 Sony 无关。固件研究存在风险，后果自负。
 
