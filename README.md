@@ -11,7 +11,26 @@
 
 ## 一句话结论
 
-FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱动），但它的会话层只开放了 **2 个 pFunc**，**文件通道与内存通道均不响应**——这与同平台的 A6700 存在实质差异。
+FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱动），认证可过 PMCA 内置密钥表；会话层中 `0x10` / `0x40` 可用。
+
+**写通道尚未验证。** 早期「文件通道与内存通道均不存在」的判断已撤回——`0xff01` FileControl 的测试方式有误（把路径当作 AdjustControl 载荷发送，且 `0x80` 是它的错误码），`0x40/0x1001` Jiritsu 则从未探测。详见下方更正。
+
+---
+
+## 核验状态（2026-10-23）
+
+| 结论 | 状态 | 依据 |
+|---|---|---|
+| 服务会话可达、认证成功 | ✅ 已实测 | 多次复现 |
+| `pFunc=0x40` 命令面（`0x603/604/608/610/611`） | ✅ 已实测 | `docs/02-command-map.md` |
+| 完整备份 2.25 MB、25,737 属性可解析 | ✅ 已实测 | `docs/03-backup.md` |
+| 固件可解密、`appFw.so` 可解包 | ✅ 已实测 | `docs/05-firmware-analysis.md` |
+| `feature_id=419` = `DRIVE_MODE_CONT_SHOOTING` | ✅ 已定位 | `docs/08-appfw-capability-table.md` |
+| `id=419` 在 FX30 / FX3 中取值相同 | ✅ 已比对 | 同上 |
+| **`0xff01` FileControl 是否存在** | ⬜ **待实机复测** | 早期测试方式有误 |
+| **`category=0x1001` Jiritsu 是否存在** | ⬜ **待实机探测** | 从未测试 |
+| **机型 → 能力表行号映射** | ⬜ **待定位** | 08 §5 |
+| 连拍补丁（16 处 `00→01`） | ⬜ **待实机验证** | 08 §6 |
 
 ---
 
@@ -48,10 +67,12 @@ USB 枚举（MSC，054C:0E0E）
 |---|---|---|
 | `0x10` | ProductInfo | ✅ 可用（88 字节机型信息） |
 | `0x40` | AdjustControl | ✅ 可用（见下方命令图谱） |
-| `0xff01` | FileControl | ❌ **全部返回 128** |
-| `0xff03` | MemoryDump | ❌ **全部返回 128**（含 `0xFFFF0000` BootROM） |
+| `0xff01` | FileControl | ⚠️ **待复测**（早期测试方式有误，见下） |
+| `0xff03` | MemoryDump | ⚠️ 未通（`0xFFFF0000` 等地址均 128） |
 
-**含义**：无法按路径读文件、也无法按地址读内存。要接触固件内容，本仓库范围内没有可用通道。
+> **⚠️ 2026-10-23 更正**：早期把「文件路径字符串」当作 `0x603`（AdjustControl）的 payload 发送，据此得出「FileControl 全 128」——**这个结论是错的**。FileControl 的正确载荷是 `cmd(int16) + filenameSize(int16) + 文件名（补 \\0 到 4 字节）`，成功时 `response == 1`；而 **`0x80`（=128）是它的错误码**，不等于「接口不存在」。因此 `0xff01` **尚未被有效测试**。详见 [`docs/07-jiritsu-breakthrough.md`](docs/07-jiritsu-breakthrough.md)。
+>
+> `0xff03` 用的是正确载荷（`{base, size}`），但同样需留意 128 可能是错误码而非「不支持」。
 
 ### 3. 命令空间图谱（`pFunc=0x40`）
 
@@ -62,7 +83,7 @@ USB 枚举（MSC，054C:0E0E）
 | res | 含义 |
 |---|---|
 | `0` | 成功 |
-| `128` | 命令不存在 / 不支持 |
+| `128` | 命令不存在 / 不支持（**仅限 `pFunc=0x40`**；FileControl 的 128 是错误码） |
 | `129` | 命令存在，但参数缺失或格式不符 |
 | `130` / `192` | 命令存在，但被拒绝（状态或权限） |
 
@@ -130,7 +151,9 @@ libbackup.so: Backup_read_setting_attr / Backup_write_setting_attr
 
 完整方法见 [`docs/05-firmware-analysis.md`](docs/05-firmware-analysis.md)。
 
-**但关键结论没变**：驱动模式是**纯运行时内存状态**——不在备份里（4 轮 dump 实证）、状态命令读不出（22 行零差异）、`0x603/1` 任何参数格式都返回 129。**FX30 没有能改状态的通道，仍需硬件路线。**
+**关键结论需要更新**：驱动模式确实是**纯运行时状态**——不在备份里（4 轮 dump 实证）、状态命令读不出（22 行零差异）、`0x603/1` 任何参数格式都返回 129。这与「改动需冷重载从 NV 加载」的模型一致，而不是「没有通道」。
+
+**「FX30 没有能改状态的通道」这一判断已撤回。** 它建立在「`0xff01` 全 128」之上，而该测试方式有误（见 §2 更正）。目前有两条**尚未验证**的软件通道：`0xff01` FileControl、`0x40/0x1001` Jiritsu；硬件路线（Pico）保留为兜底。
 
 ---
 
@@ -188,11 +211,13 @@ payload = [area, file_id, transfer_mode, data]
 
 | | A6700 | A7C II | **FX30** |
 |---|---|---|---|
-| 文件读取 | ✅ 可读 `/usr/lib/appFw.so` | ✅ 有文件命令 | ❌ **128** |
-| 内存通道 | — | — | ❌ **128** |
-| 路径穿越 | 有记录 | 有记录（`/tmp/jiritsu/../..`） | 未验证（缺文件通道） |
+| 文件读取 | ✅ 可读 `/usr/lib/appFw.so` | ✅ 有文件命令 | ⚠️ **待复测**（早期测试方式有误） |
+| 内存通道 | — | — | ⚠️ 未通（128 语义待区分） |
+| 路径穿越 | 有记录 | 有记录（`/tmp/jiritsu/../..`） | 未验证 |
 
-推测差异来源：**固件分支**——FX30 属 Cinema Line，A6700/A7C2 属 Alpha。
+> 早期「FX30 的 Cinema Line 分支裁掉了文件通道」的推测**尚未证实**——它源于一次格式错误的 FileControl 调用（见 §2 更正）。
+
+差异来源（**待验证**）：固件分支——FX30 属 Cinema Line，A6700/A7C2 属 Alpha。
 
 ---
 
@@ -242,8 +267,10 @@ NOTICE                   来源与致谢
 
 Research on the USB service session (Senser / Jiritsu) of the Sony **ILME-FX30, firmware 6.00**.
 
-**Findings:** the service session is reachable over pure USB (Type-C + libusbK on both `054C:0E0E` and `054C:0336`), and authentication succeeds with PMCA's built-in key tables. However, **only two pFunc values respond**: `0x10` (ProductInfo) and `0x40` (AdjustControl). Both `0xff01` (FileControl) and `0xff03` (MemoryDump) return `128` — no file channel, no memory channel.
+**Findings:** the service session is reachable over pure USB (Type-C + libusbK on both `054C:0E0E` and `054C:0336`), and authentication succeeds with PMCA's built-in key tables. Only two pFunc values respond: `0x10` (ProductInfo) and `0x40` (AdjustControl).
+
+**Correction (2026-10-23):** `0xff01` (FileControl) was **not validly tested** — an earlier probe sent a path string as an `0x603` AdjustControl payload, and `0x80` (=128) is FileControl's own error code, not "unsupported". `0xff03` (MemoryDump) did not respond with the correct `{base,size}` payload. See `docs/07-jiritsu-breakthrough.md`.
 
 A full command map of `pFunc=0x40` is documented, including a 2.25 MB backup blob readable via `0x603/0x05`, parsed into 25,737 properties whose ID layout matches PMCA's definitions (verified via model name / model code / serial number / recording-limit anchors).
 
-**Open problem:** locating the drive-mode (continuous shooting) property ID requires a comparison baseline from a body that has burst shooting (FX3 preferred). No firmware binaries or device-unique data are included.
+**Current state:** the `appFw.so` capability table (`{u32 supported, u32 feature_id}`, 220-wide rows) has been decoded through a three-model diff; `feature_id = 419` is `DRIVE_MODE_CONT_SHOOTING`. Its flags are **identical on FX30 and FX3**, so the remaining questions are the **model→row mapping** and a usable **write channel** — both pending hardware verification. See `docs/08-appfw-capability-table.md`. No firmware binaries or device-unique data are included.
