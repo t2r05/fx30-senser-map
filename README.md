@@ -134,6 +134,26 @@ libbackup.so: Backup_read_setting_attr / Backup_write_setting_attr
 
 ---
 
+## 进展补充（2026-10-23）：写通道结论修正
+
+对照同代机型的公开工作后，早期「FX30 没有写通道」的判断需要修正。
+
+Jiritsu 文件服务并不走 `0xff01`，也不在 `category 0x600–0x62F`，而是：
+
+```
+pFunc = 0x40, category = 0x1001
+command = 0x4007 (SET_FILE) / 0x4010 (SET_FILE2)
+payload = [area, file_id, transfer_mode, data]
+```
+
+`category 0x1001` 在 FX30 上**从未被探测过**。因此正确表述是：**写通道尚未验证**，而非不存在。
+
+配套只读探测脚本 `probe_jiritsu_1001.py`（只发空 payload，物理上无法写文件）。完整说明见 [`docs/07-jiritsu-breakthrough.md`](docs/07-jiritsu-breakthrough.md)。
+
+同日离线分析：重新解包官方固件得到 `appFw.so`（79,032,104 字节），定位 BKID 注册表（4,355 条，vaddr `0x414A940..0x415B970`）与连拍项 `1208` 的记录位置，并整理了 9 处以 BKID 为键的平行表。**未找到单字节「支持开关」**，需与有连拍的机型差分定位。
+
+---
+
 ## 未能解决的问题（欢迎协作）
 
 **目标**：为 FX30 启用电子快门连拍（参考 FX3 的四档连拍、A6700 的电子快门 11fps）。
@@ -172,6 +192,7 @@ docs/03-backup.md        备份数据结构与 ID 布局验证
 docs/04-dead-ends.md     此路不通的记录（避免重复踩坑）
 docs/05-firmware-analysis.md  固件解密与 BKID 定位方法
 docs/06-related-projects.md   相关开源项目目录（其他作者，7 项）
+docs/07-jiritsu-breakthrough.md  Jiritsu 写通道（结论修正）与固件结构分析
 tools/                   只读探测脚本（Python / PowerShell）
 NOTICE                   来源与致谢
 ```
