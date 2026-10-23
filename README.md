@@ -17,7 +17,7 @@ FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱�
 
 ---
 
-## 核验状态（2026-10-23）
+## 核验状态（2026-10-24）
 
 | 结论 | 状态 | 依据 |
 |---|---|---|
@@ -29,7 +29,12 @@ FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱�
 | `id=419` 在 FX30 / FX3 中取值相同 | ✅ 已比对 | 同上 |
 | **`0xff01` FileControl 是否存在** | ❌ **实测未通**（很可能未实现） | 21 组路径 + 空文件名均 128；[09 §2](docs/09-realtime-results.md) |
 | **`category=0x1001` Jiritsu 是否存在** | ✅ **存在（实机确认）** | `res=0` 命令集；[09 §4](docs/09-realtime-results.md) |
-| Jiritsu 命令号 → 语义（GET/SET_FILE…） | ⬜ 待定位 | 09 §6 |
+| Jiritsu 命令号 → 语义（GET/SET_FILE…） | ✅ 已定位（18 条） | 07 |
+| **真实根文件系统任意读** | ✅ **实机（SHA-256 验证）** | [10 §1](docs/10-setting-channel.md) |
+| **设置区任意读（含实时值）** | ✅ 实机 | [10 §4](docs/10-setting-channel.md) |
+| **设置区任意写（2.25 MB 全量）** | ✅ 实机 | [10 §6](docs/10-setting-channel.md) |
+| **驱动模式字节定位（`0x8EF80`）** | ✅ 已定位 | [10 §5](docs/10-setting-channel.md) |
+| 连拍对应的模式值 | ⬜ 未确定 | 10 §5 |
 | **机型 → 能力表行号映射** | ⬜ 待定位 | 08 §5 |
 | 连拍补丁（16 处 `00→01`） | ⬜ 待验证 | 08 §6 |
 
@@ -191,11 +196,54 @@ payload = [area, file_id, transfer_mode, data]
 
 ---
 
+## 进展补充（2026-10-24）：真实文件系统读写 + 设置区读写
+
+在 `category=0x1001` 的 18 条命令全部定位之后，打通了两条此前缺失的通道：
+
+**1) 真实根文件系统任意读**（实机 + SHA-256 验证）
+
+```
+SET_FILE_PATH(0x400F)  [0x00] + "/../../etc/hostname\0"
+GET_FILE2   (0x4011)  [0x00, 0xFF, 0x00]
+```
+
+读出 `/usr/lib/libJiritsu.so` 233,416 字节，SHA-256 与固件解包版**逐字节相同**。
+关键：必须走 `arg0=0` 分支（base 为真实挂载点）；`arg0=1` 的 `/mnt` 是 media 沙箱，`..` 无法越界。
+另：`GET_FILE2` 是**一次性**的，调用后路径即被 `free` 并置空，每次读都要重新 `SET_FILE_PATH`。
+
+**2) 设置区任意读写**
+
+`0x603` 的正确载荷格式此前被漏测（试过 5/8/12 字节，**唯独没试裸的 4 字节 id**）：
+`0x603/1` = `u32le id` 单条读、`0x603/2` = `id + data` 单条写、
+`0x603/4` = `u32le protect + 全量` 写、`0x603/3` = `u16le` 保存。
+
+更重要的是 `0x603/5` 的 **fromMemory 标志**：空 payload 等价于 `fromMemory=0`（闪存预设），
+`b"\x01"` 才是**内存实时值**。此前所有快照都用空 payload，因此一直看不到实时状态。
+
+用 `mem1` 重做模式差分后，定位到驱动模式相关字节 `0x8EF80`：
+
+| 模式 | `0x8EF80` |
+|---|---|
+| 单张拍摄 | `00` |
+| 单拍阶段曝光 | `02` |
+| 自拍定时 | `08` |
+
+**写入通路已验证**：2,253,568 字节全量原样写回 → `res=0`，再读仅计数器变化。
+
+**负结果**：把 `0x8EF80` 改成 `0x01` 后，固件在启动时把它**归一到 `0x00`**——
+该字节受校验，不是可以随意强制的裸状态。连拍对应的值因此仍未确定。
+
+详见 [`docs/10-setting-channel.md`](docs/10-setting-channel.md)。
+
+---
+
 ## 未能解决的问题（欢迎协作）
 
 **目标**：为 FX30 启用电子快门连拍（参考 FX3 的四档连拍、A6700 的电子快门 11fps）。
 
-**卡点**：25,737 个属性中无名称映射，**「驱动模式」对应的属性 ID 未知**。盲改其中任意一个都是赌博。
+**卡点**：驱动模式相关字节已定位（设置快照偏移 `0x8EF80`），但**连拍对应的取值未知**，
+且该字节受固件校验——写入非法值会在启动时被归一化到合法值（单张 = `0x00`）。
+下一步是写入一个**已知合法值**做控制实验，判断它是「模式真值源」还是「状态记录」。
 
 **需要的对比基准**（任一即可）：
 
@@ -234,6 +282,7 @@ docs/06-related-projects.md   相关开源项目目录（其他作者，7 项）
 docs/07-jiritsu-breakthrough.md  Jiritsu 写通道（结论修正）与固件结构分析
 docs/08-appfw-capability-table.md  三机型能力表结构与差分结果
 docs/09-realtime-results.md  实机测试结果（0x1001 存在 / 0xff01 未通）
+docs/10-setting-channel.md   真实文件系统读写 + 设置区读写（实机验证）
 tools/                   只读探测脚本（Python / PowerShell）
 NOTICE                   来源与致谢
 ```
@@ -274,5 +323,7 @@ Research on the USB service session (Senser / Jiritsu) of the Sony **ILME-FX30, 
 **Correction (2026-10-23):** `0xff01` (FileControl) was **not validly tested** — an earlier probe sent a path string as an `0x603` AdjustControl payload, and `0x80` (=128) is FileControl's own error code, not "unsupported". `0xff03` (MemoryDump) did not respond with the correct `{base,size}` payload. See `docs/07-jiritsu-breakthrough.md`.
 
 A full command map of `pFunc=0x40` is documented, including a 2.25 MB backup blob readable via `0x603/0x05`, parsed into 25,737 properties whose ID layout matches PMCA's definitions (verified via model name / model code / serial number / recording-limit anchors).
+
+**Update (2026-10-24):** `0x603/0x05` takes a `fromMemory` byte — an empty payload is equivalent to `0` (flash presets), while `\x01` returns the **live in-memory values**. All earlier snapshots used the empty payload, which is why they showed no runtime state. With live snapshots, a per-id read (`0x603/1` + `u32le id`, payload format previously missed) and a full-blob write (`0x603/4` + `u32le protect` + data, then `0x603/3` to commit) were both verified on-device, including a 2,253,568-byte write-back. Arbitrary reads of the **real root filesystem** are also possible via `SET_FILE_PATH` (`0x400F`) with an `/../../` path plus `GET_FILE2` (`0x4011`, `arg0=0`), proven by reading a system library whose SHA-256 matches the unpacked firmware byte-for-byte. See `docs/10-setting-channel.md`.
 
 **Current state:** the `appFw.so` capability table (`{u32 supported, u32 feature_id}`, 220-wide rows) has been decoded through a three-model diff; `feature_id = 419` is `DRIVE_MODE_CONT_SHOOTING`. Its flags are **identical on FX30 and FX3**, so the remaining questions are the **model→row mapping** and a usable **write channel** — both pending hardware verification. See `docs/08-appfw-capability-table.md`. No firmware binaries or device-unique data are included.
