@@ -27,10 +27,11 @@ FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱�
 | 固件可解密、`appFw.so` 可解包 | ✅ 已实测 | `docs/05-firmware-analysis.md` |
 | `feature_id=419` = `DRIVE_MODE_CONT_SHOOTING` | ✅ 已定位 | `docs/08-appfw-capability-table.md` |
 | `id=419` 在 FX30 / FX3 中取值相同 | ✅ 已比对 | 同上 |
-| **`0xff01` FileControl 是否存在** | ⬜ **待实机复测** | 早期测试方式有误 |
-| **`category=0x1001` Jiritsu 是否存在** | ⬜ **待实机探测** | 从未测试 |
-| **机型 → 能力表行号映射** | ⬜ **待定位** | 08 §5 |
-| 连拍补丁（16 处 `00→01`） | ⬜ **待实机验证** | 08 §6 |
+| **`0xff01` FileControl 是否存在** | ❌ **实测未通**（很可能未实现） | 21 组路径 + 空文件名均 128；[09 §2](docs/09-realtime-results.md) |
+| **`category=0x1001` Jiritsu 是否存在** | ✅ **存在（实机确认）** | `res=0` 命令集；[09 §4](docs/09-realtime-results.md) |
+| Jiritsu 命令号 → 语义（GET/SET_FILE…） | ⬜ 待定位 | 09 §6 |
+| **机型 → 能力表行号映射** | ⬜ 待定位 | 08 §5 |
+| 连拍补丁（16 处 `00→01`） | ⬜ 待验证 | 08 §6 |
 
 ---
 
@@ -232,6 +233,7 @@ docs/05-firmware-analysis.md  固件解密与 BKID 定位方法
 docs/06-related-projects.md   相关开源项目目录（其他作者，7 项）
 docs/07-jiritsu-breakthrough.md  Jiritsu 写通道（结论修正）与固件结构分析
 docs/08-appfw-capability-table.md  三机型能力表结构与差分结果
+docs/09-realtime-results.md  实机测试结果（0x1001 存在 / 0xff01 未通）
 tools/                   只读探测脚本（Python / PowerShell）
 NOTICE                   来源与致谢
 ```
