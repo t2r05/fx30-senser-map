@@ -4,11 +4,20 @@
 
 ---
 
-## 一、文件通道不存在
+## 一、文件通道：⚠️ 结论已撤回（原测试方式有误）
 
-### `pFunc=0xff01`（FileControl）全部返回 128
+> **2026-10-23 更正：本节原始结论「文件通道不存在」不成立。**
+> 原始测试把**文件路径字符串**当作 `0x603`（AdjustControl）的 payload 发送，而 FileControl 是**另一个 pFunc（`0xff01`）**，其载荷格式为：
+>
+> ```
+> cmd(int16) + filenameSize(int16) + 文件名（补 \0 到 4 字节）
+> cmd: 1=写  2=读  3=删
+> 成功时 response == 1；0x80 (=128) 是错误码，不是「接口不存在」
+> ```
+>
+> 所以当时看到的 `128` 既不是 FileControl 的响应，也不能证明接口缺失。**本条已从「死路」改为「待实机复测」**，复测脚本：`probe_filecontrol.py`。
 
-试过的路径（**全部 128**）：
+原始记录（保留备查）：当时对下列路径逐个发送 `0x603` 请求，均返回 128：
 
 ```
 /  /etc  /bin  /usr  /lib  /mnt  /opt  /tmp  /var  /proc
@@ -20,13 +29,11 @@
 /usr/lib/os-release
 ```
 
-**结论**：不是路径错，是**接口在 FX30 上不响应**。因此「按路径读 `/usr/lib/appFw.so`」这条在 A6700 上成立的路，在 FX30 上走不通。
-
 ---
 
-## 二、内存通道不存在
+## 二、内存通道：未读到数据（128 语义待区分）
 
-### `pFunc=0xff03`（MemoryDump）全部返回 128
+### `pFunc=0xff03`（MemoryDump）未读到数据（响应 128）
 
 | 基地址 | 长度 | 结果 |
 |---|---|---|
@@ -35,7 +42,7 @@
 | `0xFE000000`（eSRAM） | `0x1000` | **128** |
 | `0x400000000`（System RAM） | `0x1000` | 参数越界（`MemoryDumpHeader` 为 INT32） |
 
-**结论**：无法按地址 dump 内存/闪存。PMCA 的 `bootrom` 命令在 FX30 上不可用。
+**结论**：上述地址按当前载荷均未读到数据。**但注意**：`pFunc=0xff03` 的 128 也可能是错误码（与 FileControl 的 `0x80` 同类），「命令不存在」与「地址/参数被拒」尚未区分。本条同样标注为**待复测**，不宜再作为「内存通道不存在」的定论。
 
 ---
 
@@ -185,14 +192,15 @@ lib_appFw.so  .rodata  0x3664A70
 
 **要读到这张表，必须先拿到固件镜像**；而读文件的 `FileControl`（`0xff01`）与读内存的 `MemoryDump`（`0xff03`）在本机身上均返回 `128`（见本文第一、二节）。
 
-### 4. 结论
+### 4. 结论（已更新）
 
-驱动模式的读写位置**无法通过任何纯软件只读通道获得**。要继续只有两条路：
+> **2026-10-23 更新**：官方固件已通过 `BODYDATA.DAT` + fwtool（PR #52）解出，`appFw.so` 已完成离线分析；本节原结论「只能靠 Pico 或他人提供映射表」**已不适用**。能力表与 `feature_id = 419`（`DRIVE_MODE_CONT_SHOOTING`）均已定位，见 [`08-appfw-capability-table.md`](08-appfw-capability-table.md)。
 
-1. 由已有研究者直接提供 `area_check_data.dat` 映射表，或目标属性的 `id`
-2. 硬件路线（Pico / BootROM）dump 固件后离线分析
+现在缺的不是分析资料，而是**写入通道**：
 
-**在拿到固件或映射表之前，继续扫描命令空间或备份属性都不会有收获。**
+1. `0xff01` FileControl —— **待实机复测**（见第一节更正）
+2. `pFunc=0x40 / category=0x1001` Jiritsu —— **待实机探测**（见 [`07-jiritsu-breakthrough.md`](07-jiritsu-breakthrough.md)）
+3. 硬件路线（Pico / BootROM）—— 兜底
 
 ---
 
