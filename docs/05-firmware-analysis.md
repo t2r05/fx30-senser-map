@@ -209,6 +209,6 @@ usage: bk command [command-option-and-arguments]
 - 任意功能的枚举值都能确认是否存在
 - 任何代码路径都能反汇编确认
 
-但**最终写入设备**仍需要一条能改内存或改文件的通道。FX30 上这条通道不存在（见 [04-dead-ends.md](04-dead-ends.md)），所以仍需硬件路线。
+但**最终写入设备**仍需要一条能改内存或改文件的通道。**该通道尚未验证**（早期「FX30 不存在此通道」的判断源于一次格式错误的 FileControl 调用，已撤回，见 [04-dead-ends.md](04-dead-ends.md) 与 [07-jiritsu-breakthrough.md](07-jiritsu-breakthrough.md)）。
 
-**不过一旦通过 Pico 拿到固件镜像，本文所有方法可直接套用。**
+**固件已无需 Pico 即可获得**：官方 `BODYDATA.DAT` 可直接用 fwtool（PR #52）解包，本文所有方法已在本机离线跑通。
