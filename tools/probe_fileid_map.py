@@ -94,6 +94,27 @@ def enter(driver):
     return dev
 
 
+def check_hasp(dev):
+    """HASP 服务令牌健康检查。
+
+    为什么会加这个：早前日志只记「HASP 完成」，不记长度 ——
+    返回 0 字节也会被当成完成。按 Sony 定义 HASP 固定 88 字节
+    （pmca: SONY_PRODUCT_INFO_READ_HASP = (0, 0x001f)，走 pFunc 0x10），
+    长度不等于 88 就说明这次会话没真正建立，后面的读取结果一律不可信。
+    """
+    try:
+        hasp = SonySenserCamera(dev).readHasp()
+        n = len(hasp) if hasp else 0
+        if n == 88:
+            p("[+] HASP 88 B  ✅ 服务通道可用")
+            return True
+        p("[!] HASP 长度 %d（期望 88）—— 会话可能未完全建立" % n)
+        return False
+    except Exception as e:  # noqa: BLE001
+        p("[!] HASP 读取异常: %r" % (e,))
+        return False
+
+
 def send(dev, cmd, payload, label):
     h = HDR.pack(category=CAT, command=cmd)
     res, data = dev.sendSenserPacket(PF_ADJ, h + payload)
@@ -129,6 +150,11 @@ def main():
     try:
         with importDriver("libusb") as driver:
             dev = enter(driver)
+
+            p("\n[-] HASP 健康检查（长度应为 88）")
+            hasp_ok = check_hasp(dev)
+            if not hasp_ok:
+                p("    ⚠️ HASP 未达 88 B —— 后续读取结果需要打折扣看")
 
             p("\n[0] 版本自检")
             send(dev, CMD_GET_VERSION, b"", "GET_VERSION 0x400D")

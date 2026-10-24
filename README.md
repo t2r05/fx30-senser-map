@@ -94,7 +94,7 @@ USB 枚举（MSC，054C:0E0E）
 
 | pFunc | 名称 | FX30 6.00 |
 |---|---|---|
-| `0x10` | ProductInfo | ✅ 可用（88 字节机型信息） |
+| `0x10` | ProductInfo | ✅ 可用 —— item `0x001f` = **HASP 服务令牌（88 B）**（`readHasp()`） |
 | `0x40` | AdjustControl | ✅ 可用（见下方命令图谱） |
 | `0xff01` | FileControl | ⚠️ **待复测**（早期测试方式有误，见下） |
 | `0xff03` | MemoryDump | ⚠️ 未通（`0xFFFF0000` 等地址均 128） |

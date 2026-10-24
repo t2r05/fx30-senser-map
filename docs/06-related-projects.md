@@ -25,11 +25,31 @@
 | 14 | **sony-a7c2-fl23-linux** | [nimrc/sony-a7c2-fl23-linux](https://github.com/nimrc/sony-a7c2-fl23-linux) | 相关 · 移植 | A7C2 工具的 Linux 一键脚本 |
 | 15 | **a7c2-fuji-ai-skill** | [FlyMercurian/a7c2-fuji-ai-skill](https://github.com/FlyMercurian/a7c2-fuji-ai-skill) | 相关 · 包装 | 把 A7C2 工具包装成 AI skill |
 | 16 | **Recipe Lab** | [voxivoid/recipe-lab-sony-pmca](https://github.com/voxivoid/recipe-lab-sony-pmca) | 相关 · 生态 | 基于 PMCA 的创意外观 App |
+| 17 | **fx30-firmware-research** | [Lincan19540/fx30-firmware-research](https://github.com/Lincan19540/fx30-firmware-research) | 相关 · FX30 | 只公开「服务模式连接 + HASP 88 B」（2026-10-24 建仓），其余「暂不公开」 |
 
 > 盘点口径：**核心相关 16 个**（服务模式 / 固件逆向 / 功能解锁）。PMCA App 生态与 PTP 控制类项目不入表。
 > A7C2 生态已分裂出 8 个衍生仓库（#4 #5 #6 #7 #12 #13 #14 #15），多为 FL2/FL3 移植与再包装，**对驱动模式无新增信息**。
 
 ## 说明
+
+### 与本仓库的重叠度（2026-10-24 新增一项）
+
+**`Lincan19540/fx30-firmware-research`**（FX30，建仓 2026-10-24）目前只公开
+「MSC `0E0E` → 服务模式 `0336` + Senser 认证 + 读 HASP 88 字节」——正是本仓库
+10 天前走完的第一步。它完全架在 `pmca`/`transport` 上做调用层封装，没有独立协议实现。
+
+两处可借鉴：
+
+1. **术语**：它把 `readHasp()` 的返回值叫「HASP 服务令牌」，比本仓库早期文档的
+   「88 字节机型信息」准确。pmca 源码 `SONY_PRODUCT_INFO_READ_HASP = (0, 0x001f)`
+   可证：`0x10` 是 ProductInfo **通道**，`0x001f` 只是其中一个 **item**。
+2. **双句柄坑**：同一 USB 句柄先做 `getDeviceInfo()`/`getCameraInfo()` 再发认证，
+   bulk 端点状态会被污染 —— 查询必须用独立句柄、用完 `dispose_resources`。
+   本仓库的 `enter_service()` 只做轻量枚举，不触发该问题；但将来若要「先读型号再决定探针行为」，
+   必须改成双句柄。
+
+> ⚠️ 该仓库 `assets/` 内有微信/支付宝收款码，README 同时声明 CC BY-NC-SA 4.0 与「不用于商业行为」。
+> 打赏本身不违规，但结合「其余研究阶段暂不公开」，不要把「暂不公开」理解为「以后一定公开」。
 
 ### 主线（同代机型的可用成品）
 
