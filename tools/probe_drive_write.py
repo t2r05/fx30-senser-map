@@ -42,14 +42,40 @@ probe_drive_write.py — 驱动模式双写实验（写操作）
 且第二次写入时它完全没变。它们不是模式的函数，写了也没用。
 （`m0` 读法下 `0x8DC14` 恒为 `0xDA`，只有 `m1` 才读到变化值。）
 
-## 用法
+## 用法（最简：三条命令走天下）
 
-    python probe_drive_write.py 0x8EF80=0x01 0x91690=0x01     # 写连拍
-    python probe_drive_write.py 0x8EF80=0x00 0x91690=0x00     # 回滚单张
+    python probe_drive_write.py --burst     # 开启连拍
+    python probe_drive_write.py --single    # 回滚单张
+    python probe_drive_write.py --probe     # 只看当前状态（不写）
+
+预设一览（⚠️ 只有 burst / single 经实机验证，其余为按表推测）：
+
+| 预设 | 0x8EF80 | 0x91690 | 含义 | 验证 |
+|---|---|---|---|---|
+| `--single`  | `0x00` | `0x00` | 单张 SINGLE / 1_IMAGE_SHOOTING | ✅ 已验证（回滚用） |
+| `--burst`   | `0x01` | `0x01` | **连拍** BURST / CONT_SHOOTING | ✅ 已验证 |
+| `--bracket` | `0x02` | `0x09` | 包围曝光 BRACKET / BRACKET_SINGLE | 🟡 实测过，未验证写入 |
+| `--timer2`  | `0x08` | `0x05` | 自拍定时 2 秒 SINGLE_SELF_2S / SELF_TIMER | ✅ 实测过 |
+| `--timer5`  | `0x0C` | `0x05` | 自拍定时 5 秒 | 🟡 推测 |
+| `--timer10` | `0x07` | `0x05` | 自拍定时 10 秒 | 🟡 推测 |
+
+也可以手动指定任意偏移：
+
+    python probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
     python probe_drive_write.py 0x8EF80=0x01 0x91690=0x01 --dry-run
 
-写完必须**拔电池 ≥30 秒冷启动**再判读 UI —— 热重启走 nflasha5 暖启动镜像恢复，
-会把改动吃掉（教训 #15）。
+## 完整流程（4 步）
+
+    1. 相机 USB 模式设为「海量存储器」并插好线
+    2. python probe_drive_write.py --burst
+    3. 拔 USB 线 -> 取电池 ≥30 秒 -> 装回开机
+    4. 看菜单：显示「连拍」；按住快门验证
+
+⚠️ **第 3 步必须用拔电池冷启动** —— 关机再开机是热重启，走 nflasha5 暖启动
+镜像恢复，会把改动吃掉（教训 #15）。
+
+⚠️ **连拍是隐藏模式**：菜单里不显示该选项，**一旦手动切换驱动模式就会掉回单张**，
+需要重新跑一次 `--burst`。
 """
 import os
 import sys
@@ -69,6 +95,18 @@ HDR = SonySenserCamera.CommandHeader
 OUT = os.path.join(HERE, "dump")
 
 LOG = []
+
+# ---- 常用模式预设：不用记十六进制 ----
+# 值 = (0x8EF80, 0x91690)，即两张枚举表的位置索引
+# ⚠️ 只有 BURST / SINGLE 经实机验证；其余为按表推测，未验证
+PRESETS = {
+    "burst":  (0x01, 0x01, "连拍 BURST / CONT_SHOOTING ✅已验证"),
+    "single": (0x00, 0x00, "单张 SINGLE / 1_IMAGE_SHOOTING ✅已验证（回滚用）"),
+    "bracket": (0x02, 0x09, "包围曝光 BRACKET / BRACKET_SINGLE 🟡实测过，未验证写入"),
+    "timer2": (0x08, 0x05, "自拍定时 2 秒 SINGLE_SELF_2S / SELF_TIMER ✅实测过"),
+    "timer5": (0x0C, 0x05, "自拍定时 5 秒 SINGLE_SELF_5S / SELF_TIMER 🟡推测"),
+    "timer10": (0x07, 0x05, "自拍定时 10 秒 SINGLE_SELF_10S / SELF_TIMER 🟡推测"),
+}
 
 EXT = ['SINGLE', 'BURST', 'BRACKET', 'REMOTE', 'SPEED_PRIOR_BURST',
        'RAW_BURST', 'SINGLE_BRACKET', 'SINGLE_SELF_10S', 'SINGLE_SELF_2S',
@@ -198,11 +236,34 @@ def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     dry = "--dry-run" in sys.argv
     probe = "--probe" in sys.argv      # 纯只读：只看当前状态，不写
-    if not args and not probe:
-        p("用法: python probe_drive_write.py 0x8EF80=0x01 0x91690=0x01 [--dry-run]")
-        p("      python probe_drive_write.py --probe            # 只读当前状态")
-        p("示例: python probe_drive_write.py 0x8EF80=0x00 0x91690=0x00   # 回滚单张")
+    preset = None
+    for k in PRESETS:
+        if ("--" + k) in sys.argv:
+            preset = k
+            break
+
+    if not args and not probe and not preset:
+        p("=" * 84)
+        p("FX30 驱动模式写入 —— 用法")
+        p("=" * 84)
+        p("  最常用（不用记十六进制）：")
+        p("    python probe_drive_write.py --burst     # 开启连拍")
+        p("    python probe_drive_write.py --single    # 回滚单张")
+        p("    python probe_drive_write.py --probe     # 只看当前状态（不写）")
+        p("")
+        p("  可用预设：")
+        for k, (a, b, desc) in PRESETS.items():
+            p("    --%-9s 0x8EF80=0x%02X 0x91690=0x%02X  %s" % (k, a, b, desc))
+        p("")
+        p("  手动指定任意偏移：")
+        p("    python probe_drive_write.py 0x8EF80=0x01 0x91690=0x01")
+        p("    python probe_drive_write.py 0x8EF80=0x01 0x91690=0x01 --dry-run")
         return 2
+
+    if preset:
+        a, b, desc = PRESETS[preset]
+        args = ["0x8EF80=0x%02X" % a, "0x91690=0x%02X" % b]
+        p("[*] 使用预设 --%s：%s" % (preset, desc))
 
     edits = []
     for a in args:

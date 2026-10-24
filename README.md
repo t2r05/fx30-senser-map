@@ -27,13 +27,19 @@
 
 FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱动），认证可过 PMCA 内置密钥表；`0x10` / `0x40` 两个 pFunc 可用，`0x1001` Jiritsu 可读**真实根文件系统**，设置区**可读且可全量写**。
 
-**✅ 已可开启隐藏连拍模式**（2026-10-24 实机验证）：成对写入设置区两个字节
-`0x8EF80=0x01` + `0x91690=0x01`，**拔电池 ≥30 秒冷启动**后相机进入连拍且能正常连拍
+**✅ 已可开启隐藏连拍模式**（2026-10-24 实机验证，**已独立复现 3 次**）：
+成对写入设置区两个字节，再**拔电池 ≥30 秒冷启动**，相机进入连拍且能正常连拍
 （菜单不显示该选项，手动切换即掉回）。
 
 ```bash
-python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
+python tools/probe_drive_write.py --burst     # 开启连拍
+python tools/probe_drive_write.py --single    # 回滚单张
+python tools/probe_drive_write.py --probe     # 只看状态，不写
 ```
+
+> 📄 **上手请看 [`docs/18-开启隐藏连拍-最简步骤.md`](docs/18-开启隐藏连拍-最简步骤.md)**
+> （4 步流程 + 预设一览 + FAQ）。等价的原始写法是
+> `python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01`。
 
 **同时推翻了此前「三条路都封死」的判断**：驱动模式**不在** `0x603/1` 属性表里
 （那 1,024 条与模式零差异是对的，但不是「读不到真值」，而是「那里根本没有这个字段」），
@@ -415,12 +421,19 @@ struct prop_record { uint64_t id; void *attach; void *stub[8]; uint64_t meta; };
 ### 1. 一行命令
 
 ```bash
-python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
+python tools/probe_drive_write.py --burst
 # → 拔电池 ≥30 秒冷启动 → 相机进入连拍，能正常连拍
 ```
 
-**这是隐藏模式**：驱动模式菜单里**不显示**该选项，一旦手动切换菜单就会掉回。
-但按住快门确实连拍。
+（等价原始写法：`probe_drive_write.py 0x8EF80=0x01 0x91690=0x01`）
+
+**这是隐藏模式**：驱动模式菜单里**不显示**该选项，一旦手动切换菜单就会掉回单张
+—— 固件会把 `0x8EF80` 和 `0x91690` 都写回 `0x00`（已由 `--probe` 快照确认）。
+掉了重新跑一次 `--burst` 即可。但按住快门确实连拍。
+
+**已独立复现 3 次**（10-24 晚三次完整流程均成功）—— 方法可靠。
+
+👉 **完整上手流程见 [`docs/18-开启隐藏连拍-最简步骤.md`](docs/18-开启隐藏连拍-最简步骤.md)**
 
 ### 2. `0x8EF80` / `0x91690` 存的是**枚举表位置索引**，不是属性 id
 
@@ -648,6 +661,7 @@ docs/14-peer-crosscheck.md   与上游研究者的通道互证（跨机型逐条
 docs/15-payload-elf-rules.md dlopen 载荷的 ELF 结构规则（五条铁律 + 症状对照）⭐
 docs/16-firmware-unpack.md   官方固件包解包（UFU 容器 + 加密 FDAT + 四机型镜像规模）
 docs/17-disclaimer-and-boundaries.md  免责声明 · 脚本风险分级 · 危险命令清单 · 责任限制 ⭐
+docs/18-开启隐藏连拍-最简步骤.md  一键开启隐藏连拍的 4 步流程 + FAQ ⭐ 先看这个上手
 tools/                   探测脚本（Python / PowerShell），按风险分级见 docs/17
 tools/offline/           纯静态分析（名称→id→.bss 地址链），不接触相机
 tools/payload/           载荷构建与结构校验（zig + ELF 自检，不含下发脚本）
