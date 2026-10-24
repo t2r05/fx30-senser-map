@@ -44,6 +44,8 @@ CMD_SET_FILE = 0x4007
 CMD_GET_FILE = 0x4008
 CMD_GET_VERSION = 0x400D
 CMD_SET_FILE2 = 0x4010          # 仅 --allow-4010 时使用
+CMD_MOUNT = 0x4002              # 重挂 nflasha6（删文件会触发卸载，必须重挂）
+CMD_DEL_CAND = (0x4009, 0x4012)  # FILE_DELETE 的两个候选命令号
 
 # 反汇编得出的索引表（自检用，不是猜的）
 SLOTS = [
@@ -141,9 +143,24 @@ def classify(data):
 def main():
     allow_4010 = "--allow-4010" in sys.argv
 
+    # ---- 写操作开关（只有显式给出时才执行）----
+    do_mount = "--mount" in sys.argv
+    del_fid = None
+    if "--delete" in sys.argv:
+        i = sys.argv.index("--delete")
+        if i + 1 >= len(sys.argv):
+            p("[FAIL] --delete 需要跟一个 file_id（0~4）")
+            return 2
+        del_fid = int(sys.argv[i + 1], 0)
+
     p("=" * 78)
-    p("Jiritsu 文件槽位只读核对 — FX30")
-    p("模式: %s" % ("GET + 0x4010 空头探测" if allow_4010 else "纯读（GET_FILE only）"))
+    p("Jiritsu 文件槽位核对 — FX30")
+    if del_fid is not None:
+        p("模式: ⚠️ 写操作 — FILE_DELETE file_id=%d" % del_fid)
+    elif do_mount:
+        p("模式: ⚠️ 写操作 — MOUNT 0x4002 重挂")
+    else:
+        p("模式: %s" % ("GET + 0x4010 空头探测" if allow_4010 else "纯读（GET_FILE only）"))
     p("=" * 78)
 
     results = {}
@@ -155,6 +172,47 @@ def main():
             hasp_ok = check_hasp(dev)
             if not hasp_ok:
                 p("    ⚠️ HASP 未达 88 B —— 后续读取结果需要打折扣看")
+
+            # ---- 删除分支：删完就地重挂 + 读回确认 ----
+            if del_fid is not None:
+                p("\n[D1] 删除前先读一次 file_id=%d（留档）" % del_fid)
+                res, data = send(dev, CMD_GET_FILE, bytes([0, del_fid, 0]),
+                                 "GET file_id=%d 删除前" % del_fid)
+                p("      判定: %s" % classify(data))
+
+                ok = False
+                for cmd in CMD_DEL_CAND:
+                    p("\n[D2] FILE_DELETE 试 0x%04X" % cmd)
+                    res, data = send(dev, cmd, bytes([0, del_fid, 0]),
+                                     "FILE_DELETE 0x%04X file_id=%d" % (cmd, del_fid))
+                    if res in (0, 1):
+                        p("      ✅ 该命令被接受（res=%s）" % res)
+                        ok = True
+                        break
+                    p("      ✗ res=%s，换下一个候选" % res)
+                if not ok:
+                    p("\n[!] 0x4009 / 0x4012 都未被接受 —— 停止，不要重试")
+
+                p("\n[D3] 重挂 0x4002 MOUNT（删文件可能触发 nflasha6 卸载）")
+                res, data = send(dev, CMD_MOUNT, b"", "MOUNT 0x4002")
+                p("      res=%s" % res)
+
+                p("\n[D4] 读回确认 file_id=%d 已空" % del_fid)
+                res, data = send(dev, CMD_GET_FILE, bytes([0, del_fid, 0]),
+                                 "GET file_id=%d 删除后" % del_fid)
+                p("      判定: %s" % classify(data))
+                p("      备注: 若 res=130 表示分区仍未挂上，可再发一次 0x4002")
+                return 0
+
+            # ---- 纯重挂分支 ----
+            if do_mount:
+                p("\n[M1] MOUNT 0x4002")
+                res, data = send(dev, CMD_MOUNT, b"", "MOUNT 0x4002")
+                p("      res=%s" % res)
+                p("\n[M2] 读回 file_id=0 验证目录可访问")
+                res, data = send(dev, CMD_GET_FILE, bytes([0, 0, 0]), "GET file_id=0")
+                p("      判定: %s" % classify(data))
+                return 0
 
             p("\n[0] 版本自检")
             send(dev, CMD_GET_VERSION, b"", "GET_VERSION 0x400D")
