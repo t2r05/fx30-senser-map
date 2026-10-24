@@ -36,8 +36,11 @@ probe_drive_write.py — 驱动模式双写实验（写操作）
 | 连拍(限张) | 0x02 (BRACKET) | 0x02 (CONT_SHOOTING_LIMITED) | 已实测=包围 |
 | 速度优先连拍 | 0x04 (SPEED_PRIOR_BURST) | 0x03 (SPD_PRIORITY_CONT) | 配对待验 |
 
-另外 `0x08DC14` 也随模式变化（single=0x16 / timer=0x05 / bracket=0x3A），
-本脚本支持一并写入，但**默认不动**（不确定它的语义，乱写风险高）。
+⚠️ **不要写 `0x08DC14` / `0x07A640`** —— 早期以为是「随模式变化的第三字段」，
+后续复现证明是**运行时噪声**：同一模式（`0x8EF80=0x00`）下 `0x8DC14` 实测出
+9 个不同取值（`0x16`/`0x39`/`0x47`/`0x6A`/`0x72`/`0x79`/`0xD2`/`0xDA`/`0xDF`），
+且第二次写入时它完全没变。它们不是模式的函数，写了也没用。
+（`m0` 读法下 `0x8DC14` 恒为 `0xDA`，只有 `m1` 才读到变化值。）
 
 ## 用法
 
@@ -87,8 +90,16 @@ def p(*a):
 
 def enter(driver):
     ds = list(listDevices(driver, True))
-    if any(isinstance(d, SonySenserDevice) for d in ds):
-        raise RuntimeError("已在服务模式 - 请先断电重启相机")
+    # 上一次会话故意没调 stop()，相机会停留在服务身份（054C:0336）。
+    # 这里直接复用：省一次手动切 USB 模式，不必断电重启。
+    svc = [d for d in ds if isinstance(d, SonySenserDevice)]
+    if svc:
+        p("[*] 检测到已处于服务模式（上次会话未 stop）—— 直接复用，第 2 阶段认证")
+        dev = svc[0]
+        a = SonySenserAuthDevice(dev.driver)
+        a.start()
+        a.authenticate()
+        return dev
     msc = [d for d in ds if isinstance(d, SonyMscExtCmdDevice)]
     if not msc:
         raise RuntimeError("未找到 MSC 设备 - 检查 USB=海量存储器 / 重新插拔")
@@ -132,13 +143,14 @@ def check_hasp(dev):
         return False
 
 
-def read_mem1(dev, tag):
+def read_mem1(dev, tag, stamp=""):
     h = HDR.pack(category=0x603, command=5)
     res, data = dev.sendSenserPacket(PFUNC_ADJ, h + b"\x01")
     if res != 0 or not data:
         p("  [!] 读 %s 失败 res=%s" % (tag, res))
         return None
-    path = os.path.join(OUT, "drive_%s.bin" % tag)
+    # 快照带时间戳，避免覆盖历史回滚材料（教训：回滚材料被覆盖就没法还原了）
+    path = os.path.join(OUT, "drive_%s%s.bin" % (tag, stamp))
     with open(path, "wb") as f:
         f.write(data)
     p("  [+] 读 %-14s %d 字节 -> %s" % (tag, len(data), os.path.basename(path)))
@@ -177,14 +189,18 @@ def show_state(blob, tag):
     p("  [%s] 0x8EF80=0x%02X -> %-20s | 0x91690=0x%02X -> %s"
       % (tag, e, EXT[e] if e < len(EXT) else '?',
          i, INT[i] if i < len(INT) else '?'))
-    p("       0x08DC14=0x%02X（第三字段，随模式变化但语义未知）" % blob[0x08DC14])
+    # 注意：0x08DC14 / 0x07A640 是运行时噪声，同一模式下取值可变，
+    # 不可作为模式判据，更不要手写。此处仅作参考打印。
+    p("       0x08DC14=0x%02X（噪声字段，仅供参考，勿用作判据）" % blob[0x08DC14])
 
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     dry = "--dry-run" in sys.argv
-    if not args:
+    probe = "--probe" in sys.argv      # 纯只读：只看当前状态，不写
+    if not args and not probe:
         p("用法: python probe_drive_write.py 0x8EF80=0x01 0x91690=0x01 [--dry-run]")
+        p("      python probe_drive_write.py --probe            # 只读当前状态")
         p("示例: python probe_drive_write.py 0x8EF80=0x00 0x91690=0x00   # 回滚单张")
         return 2
 
@@ -197,14 +213,21 @@ def main():
         edits.append((int(off_s, 0), int(val_s, 0) & 0xFF))
 
     p("=" * 84)
-    p("驱动模式双写实验（%s）" % ("DRY-RUN 不落盘" if dry else "实际写入"))
+    if probe:
+        p("驱动模式状态读取（纯只读，不写任何数据）")
+    else:
+        p("驱动模式双写实验（%s）" % ("DRY-RUN 不落盘" if dry else "实际写入"))
     p("=" * 84)
     for off, val in edits:
         p("  0x%06X <- 0x%02X" % (off, val))
-    if 0x8EF80 in [o for o, _ in edits] and 0x91690 in [o for o, _ in edits]:
-        p("  [i] 两字段成对写入 —— 符合 10-24 判定结论")
-    else:
-        p("  [!] 只写了一个字段 —— 依据 10-24 结论，这很可能被固件回退！")
+    if edits:
+        if 0x8EF80 in [o for o, _ in edits] and 0x91690 in [o for o, _ in edits]:
+            p("  [i] 两字段成对写入 —— 符合 10-24 判定结论")
+        else:
+            p("  [!] 只写了一个字段 —— 依据 10-24 结论，这很可能被固件回退！")
+
+    # 快照统一带时间戳，永不覆盖历史
+    STAMP = "_" + time.strftime("%m%d_%H%M%S")
 
     try:
         with importDriver("libusb") as driver:
@@ -214,10 +237,14 @@ def main():
                 return
 
             p("\n--- 1. 读原始快照（回滚材料）---")
-            blob = read_mem1(dev, "before")
+            blob = read_mem1(dev, "before", STAMP)
             if blob is None:
                 raise RuntimeError("读失败，终止")
             show_state(blob, "BEFORE")
+
+            if probe:
+                p("\n--- 只读模式：到此为止，未写入任何数据 ---")
+                return 0
 
             patched = bytearray(blob)
             changed = []
@@ -245,7 +272,7 @@ def main():
             time.sleep(1.0)
 
             p("\n--- 4. 读回验证 ---")
-            after = read_mem1(dev, "after")
+            after = read_mem1(dev, "after", STAMP)
             if after:
                 show_state(after, "AFTER ")
                 for off, old, val in changed:

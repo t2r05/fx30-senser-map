@@ -444,8 +444,17 @@ python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
 这正是 10-24 那次「写了没生效」的真正原因 —— 当时只写了 `0x8EF80=0x08`，
 `0x91690` 仍是 `0x00`，两个字段不一致。
 
-反证：本次成对写入后，**固件自己把第三字段 `0x8DC14` 从 `0xCE` 联动改成了 `0xCF`** ——
-只有两字段一致时固件才会去联动派生量。
+**证据**：唯一的变量就是第二个字段有没有跟上 ——
+
+| 实验 | 写入 | 结果 |
+|---|---|---|
+| 单写 | `0x8EF80=0x08`，`0x91690` 留 `0x00`（不一致） | ❌ 相机仍单张 |
+| 成对 | `0x8EF80=0x01` + `0x91690=0x01` | ✅ 冷启动后进连拍，能正常连拍 |
+| 二次复现 | 从 `0x00/0x00` 重新成对写 `0x01/0x01` | ✅ 两字段读回均生效 |
+
+> ⚠️ **不要引用「固件联动改写 `0x8DC14`」这条说法** —— 该证据已撤回。
+> `0x8DC14` 与 `0x7A640` 在同一模式下取值可变（单张时实测 9 个不同值），
+> 是运行时噪声，不是模式的函数。
 
 ### 4. 两个必须记住的坑
 
@@ -591,7 +600,7 @@ python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
 | 2 | **为什么菜单不显示该选项** | 隐藏 ⇒ 菜单项的可用性判定读的是别的状态（`.bss` 镜像？），需要弄清才能让它「正常显示」 |
 | 3 | **电子快门 11fps** | A6700 用同传感器实现了 11fps，FX30 硬件无阻碍，但 `dial_hi_plus_in_electric_shutter` 在 FX30 **根本不存在**（不是 id 找不到，是消费方不存在）⇒ 可能需要更深的固件改动 |
 | 4 | **其余隐藏模式枚举** | `EXTERN_VAL_DRIVE_MODE_*` 表共 17 项，只验证了 BURST。候选：`SPEED_PRIOR_BURST` / `RAW_BURST` / `BOL_BURST` 等（索引对应关系需逐个实测） |
-| 5 | `0x08DC14` 语义 | 第三派生字段，固件自动联动改写，语义未定 |
+| 5 | ~~`0x08DC14` 语义~~ | ~~第三派生字段，固件自动联动改写~~ ❌ **已撤回**：实测同一模式下 9 个不同取值，是运行时噪声（计数器/校验/时间类），**不是模式的函数，也不存在「固件联动」**。连带 `0x7A640` 同样 |
 
 **需要的对比基准**（任一即可，仍然有效）：
 
@@ -702,7 +711,7 @@ A full command map of `pFunc=0x40` is documented, including a 2.25 MB backup blo
 * The 2.25 MB blob **is** the boot-time truth source after all. What was missing was the *second* field: `0x8EF80` and `0x91690` are **two layers of the same setting**, and writing only one of them makes the firmware fall back to single-shot. Verification also has to be a **cold boot** (battery out for ≥30 s) — powering off and on again is a *warm* restart that restores the `nflasha5` image and wipes the change.
 * The two offsets do **not** store property ids; they store **0-based positions in two enumeration tables** in `.data.rel.ro` (16-byte records `{char* name; u32 id; u16 code}`): `0x8EF80` → `EXTERN_VAL_DRIVE_MODE_*` (table base `0x41A0550`), `0x91690` → `DRIVE_MODE_*` (table base `0x41A28F0`). All 12 labelled snapshots map consistently, and the value sets observed across 27 snapshots (`0x8EF80` ∈ {0,1,2,8,12}, `0x91690` ∈ {0,5,9}) fall entirely inside the table index ranges. This is why earlier "candidate burst values `0x01`/`0x04`/`0x10`" guesses — derived by treating them as ids — were wrong.
 * Writing `0x8EF80=0x01` **and** `0x91690=0x01` together, then cold-booting, puts the camera into **burst shooting** — verified on-device: it actually bursts. It is a **hidden mode**: the drive-mode menu does not show the entry, and touching the menu drops it back.
-* The firmware itself corroborates the "pair" requirement: after the paired write it **rewrote a third field on its own** (`0x8DC14`, `0xCE` → `0xCF`) — it only derives that value when the first two agree.
+* The requirement is confirmed by direct A/B: writing `0x8EF80` alone (leaving `0x91690` at `0x00`) does nothing, while writing both together works. (An earlier version of this text cited the firmware rewriting `0x8DC14` as corroboration; **that claim has been retracted** — `0x8DC14` takes nine different values while the mode stays the same, so it is runtime noise, not a mode-derived field. The same applies to `0x7A640`.)
 
 ```bash
 python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
