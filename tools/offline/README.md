@@ -38,6 +38,10 @@ FILES = {
 | `find_idseq.py` | 在 `.rodata`/`.data` 里找 `0x1A2 → 0x1A3` 连续序列（验证菜单列表是否漏项） | [11 §5](../../11-drive-mode-ids.md) |
 | `scan_cmp_exact.py` | 统计全 `.text` 里 `cmp <reg>, #imm` 的立即数分布（对比哪些模式被特判） | [11 §4](../../11-drive-mode-ids.md) |
 | `dis_range.py <机型> <lo> <hi>` | 反汇编指定 va 区间 | — |
+| `bkid_drive_compare.py` | 四机型 `drive_mode` BKID **大小写不敏感**归一化对照，输出覆盖率矩阵与 CSV | [11 §二](../../docs/11-drive-mode-ids.md) |
+| `find_prop_table.py` | 扫描 `.data.rel.ro` 里的「等距且严格递增 id 列」，**不预设 stride** 地定位属性访问器表 | [12](../../docs/12-property-accessor-table.md) |
+| `unpack_a7c2.py <BODYDATA.DAT> <outdir>` | UFU 解析 → 提取 FDAT → 解密 → 提示后续 fwtool 命令 | [16](../../docs/16-firmware-unpack.md) |
+| `decrypt_fdat_fast.py <src> <dst>` | 4 代加密 FDAT 的快速解密（48 MB/s，含 checksum/endFlag 全量校验） | [16 §四](../../docs/16-firmware-unpack.md) |
 
 ## 用法示例
 
@@ -51,6 +55,15 @@ python dump_bkid_table.py FX30 drive_mode
 
 # 3) 解出连拍 id 的运行时地址
 python prop_lookup.py FX30 0x4B8,0x4BA,0x2AF
+
+# 4) 四机型 id 对照（大小写不敏感，自动处理三种命名规范）
+export FW_ROOT=/path/to/fx30_hack
+python bkid_drive_compare.py --csv dm_compare.csv
+python bkid_drive_compare.py --dump A7C2 | grep -i "HI_PLUS\|ELECTRIC"
+
+# 5) 官方固件包解包（A7C2 起需要先解密）
+export FWTOOL_ROOT=/path/to/fwtool.py
+python unpack_a7c2.py "BODYDATA.DAT" ./a7c2out
 ```
 
 ## 三条容易踩的坑
@@ -59,4 +72,9 @@ python prop_lookup.py FX30 0x4B8,0x4BA,0x2AF
    要搜「指向字符串的 8 字节指针」，不是搜指令。
 2. **`adrp` 的立即数会让归一化签名失效。** 做指令级对齐时必须剥掉 `#0x…` 立即数，否则命中率只有 5% 量级。
 3. **解析器不跨机型通用。** `map_prop_table.py` 的 0x58 结构只适用 FX30/FX3；
-   A6700 的 `.data.rel.ro` 是另一种布局（同一解析器只索引到 2 条）。
+   A6700 / A7C2 的 `.data.rel.ro` 是另一种布局（同一解析器只索引到 0 条连续链）。
+   未知布局先用 `find_prop_table.py` 扫 stride。
+4. **BKID 名称大小写不统一。** FX30/FX3 是 `BKID_APP_setting_*`（小写），
+   A7C2 是 `BKID_APP_SETTING_*`（全大写）。按大写关键词筛会漏掉 FX30 整族。用 `bkid_drive_compare.py`。
+5. **官方固件包分明文与加密两代。** A7C2 2.01 起 FDAT 段是密文，需先解密才能交给 fwtool。
+   见 [16-firmware-unpack](../../docs/16-firmware-unpack.md)。
