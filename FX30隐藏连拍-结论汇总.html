@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FX30 隐藏连拍 · 结论汇总</title>
+<style>
+:root{
+  --bg:#fbfbfa; --ink:#1a1d21; --ink2:#565d66; --ink3:#8b929c;
+  --line:#e8eaed; --card:#fff;
+  --green:#1a7f4e; --green-bg:#eaf6ef;
+  --amber:#a86412; --amber-bg:#fdf4e5;
+  --red:#b3352b; --red-bg:#fdeeec;
+  --blue:#26578c; --blue-bg:#ecf2f9;
+  --mono:"SF Mono","Cascadia Code",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:17px/1.85 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
+       "Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.page{max-width:790px;margin:0 auto;padding:56px 24px 120px}
+
+/* ---------- 头部 ---------- */
+.hero{margin-bottom:56px}
+.eyebrow{
+  font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink3);font-weight:600;margin-bottom:14px
+}
+h1{font-size:38px;line-height:1.28;margin:0 0 18px;letter-spacing:-.02em;font-weight:700}
+.lede{font-size:19px;line-height:1.72;color:var(--ink2);margin:0}
+.lede strong{color:var(--ink);font-weight:600}
+
+/* ---------- 数字卡 ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:14px;margin:36px 0 0}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+.stat .n{font-size:30px;font-weight:700;line-height:1.2;letter-spacing:-.02em}
+.stat .n small{font-size:15px;font-weight:600;color:var(--ink3)}
+.stat .l{font-size:13.5px;color:var(--ink2);margin-top:4px;line-height:1.5}
+.stat.ok .n{color:var(--green)}
+.stat.no .n{color:var(--red)}
+
+/* ---------- 节 ---------- */
+section{margin:70px 0 0}
+.sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px}
+.sec-num{
+  font:600 13px/1 var(--mono);color:var(--ink3);
+  border:1px solid var(--line);border-radius:6px;padding:5px 8px;
+  background:var(--card);flex:none
+}
+h2{font-size:25px;line-height:1.4;margin:0;letter-spacing:-.01em;font-weight:700}
+.sec-sub{color:var(--ink2);font-size:16px;margin:10px 0 26px;padding-left:0}
+h3{font-size:17.5px;margin:34px 0 10px;font-weight:650}
+p{margin:14px 0}
+ul,ol{margin:14px 0;padding-left:24px}
+li{margin:7px 0}
+strong{font-weight:650}
+
+/* ---------- 卡片 ---------- */
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  padding:22px 26px;margin:22px 0}
+.box.green{background:var(--green-bg);border-color:#cfe8da}
+.box.amber{background:var(--amber-bg);border-color:#f0dfc0}
+.box.red{background:var(--red-bg);border-color:#f3d5d1}
+.box.blue{background:var(--blue-bg);border-color:#d5e2f0}
+.box > :first-child{margin-top:0}
+.box > :last-child{margin-bottom:0}
+.box .t{font-weight:700;font-size:15px;letter-spacing:.02em;margin-bottom:10px;
+  display:flex;align-items:center;gap:8px}
+.box.green .t{color:var(--green)}
+.box.amber .t{color:var(--amber)}
+.box.red .t{color:var(--red)}
+.box.blue .t{color:var(--blue)}
+
+/* ---------- 代码 ---------- */
+pre{background:#16191d;color:#dfe3e8;border-radius:12px;padding:18px 22px;
+  overflow-x:auto;font:13.5px/1.75 var(--mono);margin:20px 0}
+pre code{color:inherit;background:none;padding:0;font:inherit}
+code{font:13.5px/1.6 var(--mono);background:#f0f2f5;padding:2px 6px;border-radius:5px;
+  color:#2c3238}
+
+/* ---------- 表格（精简使用） ---------- */
+.tbl{width:100%;border-collapse:collapse;margin:20px 0;font-size:15px}
+.tbl th,.tbl td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line)}
+.tbl th{font-size:13px;font-weight:650;color:var(--ink3);
+  letter-spacing:.06em;text-transform:uppercase;border-bottom:1px solid #d9dde2}
+.tbl td:first-child{font-weight:600}
+.tbl tr:last-child td{border-bottom:none}
+.tbl .mono{font-family:var(--mono);font-size:13.5px;font-weight:400}
+
+/* ---------- 状态点 ---------- */
+.st{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600}
+.st::before{content:"";width:8px;height:8px;border-radius:50%;flex:none}
+.st.ok{color:var(--green)} .st.ok::before{background:var(--green)}
+.st.no{color:var(--red)} .st.no::before{background:var(--red)}
+.st.mid{color:var(--amber)} .st.mid::before{background:var(--amber)}
+
+/* ---------- 路线卡 ---------- */
+.route{border-left:3px solid var(--line);padding:2px 0 2px 20px;margin:26px 0}
+.route.fail{border-color:#e0c4c0}
+.route.win{border-color:#9dd0b4}
+.route h3{margin:0 0 6px;font-size:16.5px}
+.route .why{color:var(--ink2);font-size:15.5px;margin:8px 0}
+.route .lesson{font-size:14.5px;color:var(--ink3);margin:8px 0 0;
+  padding-left:14px;border-left:2px solid var(--line)}
+
+/* ---------- 图 ---------- */
+figure{margin:30px 0}
+figure svg{display:block;width:100%;height:auto}
+figcaption{font-size:14px;color:var(--ink3);margin-top:10px;text-align:center}
+
+/* ---------- 页脚 ---------- */
+footer{margin-top:80px;padding-top:26px;border-top:1px solid var(--line);
+  color:var(--ink3);font-size:13.5px;line-height:1.8}
+
+@media (max-width:600px){
+  .page{padding:36px 18px 80px}
+  h1{font-size:29px}
+  .lede{font-size:17px}
+  .stat .n{font-size:25px}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ============ HERO ============ -->
+<div class="hero">
+  <div class="eyebrow">ILME-FX30 · 固件 6.00 · 2026-10-25</div>
+  <h1>隐藏连拍已经永久开启<br>只剩下「菜单不显示」</h1>
+  <p class="lede">
+    写设置区两个字节、拔电池冷启动一次，FX30 就进入了官方没有提供的连拍模式。
+    它<strong>无损、可逆、近乎永久</strong> —— 关机、冷启动、切视频都不会掉。
+    唯一没解决的是：<strong>菜单里看不到它</strong>，所以没法和别的拍摄模式来回切。
+  </p>
+
+  <div class="stats">
+    <div class="stat ok">
+      <div class="n">3<small> 次</small></div>
+      <div class="l">独立复现<br>全部成功</div>
+    </div>
+    <div class="stat ok">
+      <div class="n">2<small> 字节</small></div>
+      <div class="l">写入量<br><code class="mono">0x8EF80</code> + <code class="mono">0x91690</code></div>
+    </div>
+    <div class="stat ok">
+      <div class="n">97–100<small>%</small></div>
+      <div class="l">FX30↔FX3<br>PDT 对齐相同率</div>
+    </div>
+    <div class="stat no">
+      <div class="n">0<small> 变化</small></div>
+      <div class="l">菜单显示<br>仍未解决</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 01 时间线 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">01</span><h2>这一晚发生了什么</h2></div>
+  <p class="sec-sub">从「能不能开」到「为什么菜单不显示」，六个阶段。</p>
+
+  <figure>
+    <svg viewBox="0 0 740 300" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L8,4 L0,8 z" fill="#c9ced5"/>
+        </marker>
+      </defs>
+      <!-- 主轴 -->
+      <line x1="60" y1="24" x2="60" y2="272" stroke="#e8eaed" stroke-width="2"/>
+
+      <!-- 节点 1 -->
+      <circle cx="60" cy="40" r="7" fill="#1a7f4e"/>
+      <text x="84" y="38" font-size="14.5" font-weight="700" fill="#1a1d21">连拍写入成功</text>
+      <text x="84" y="57" font-size="13" fill="#8b929c">21:43 · 成对写 0x8EF80 / 0x91690，冷启动进连拍</text>
+
+      <!-- 节点 2 -->
+      <circle cx="60" cy="98" r="7" fill="#1a7f4e"/>
+      <text x="84" y="96" font-size="14.5" font-weight="700" fill="#1a1d21">持久性摸清</text>
+      <text x="84" y="115" font-size="13" fill="#8b929c">23:2x · 只有「改驱动模式设置」才会掉</text>
+
+      <!-- 节点 3 -->
+      <circle cx="60" cy="156" r="7" fill="#26578c"/>
+      <text x="84" y="154" font-size="14.5" font-weight="700" fill="#1a1d21">PDT 跨机型对齐</text>
+      <text x="84" y="173" font-size="13" fill="#8b929c">位移 −560，相同率 97–100%，解开 0x91690 谜团</text>
+
+      <!-- 节点 4 -->
+      <circle cx="60" cy="214" r="7" fill="#a86412"/>
+      <text x="84" y="212" font-size="14.5" font-weight="700" fill="#1a1d21">载荷打通 .bss 读写</text>
+      <text x="84" y="231" font-size="13" fill="#8b929c">首次实现：与 appFw 同进程，内存可读可写</text>
+
+      <!-- 节点 5 -->
+      <circle cx="60" cy="272" r="5" fill="#b3352b"/>
+      <text x="84" y="270" font-size="14.5" font-weight="700" fill="#b3352b">菜单问题收窄到 UI 层</text>
+      <text x="84" y="289" font-size="13" fill="#8b929c">写启用标志无效 → 判断菜单列表可能是静态的</text>
+    </svg>
+    <figcaption>今晚的推进顺序：先能开，再摸边界，再找原因</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 02 怎么开 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">02</span><h2>怎么开启</h2></div>
+  <p class="sec-sub">一条命令，两个字节，一次冷启动。</p>
+
+  <pre><code>python probe_drive_write.py --burst
+# → 拔电池 ≥30 秒冷启动 → 相机进入连拍
+
+python probe_drive_write.py --single    # 回滚单张
+python probe_drive_write.py --probe     # 只看状态，不写</code></pre>
+
+  <div class="box green">
+    <div class="t">✓ 必须成对写入</div>
+    <p><code>0x8EF80 = 0x01</code>（外层菜单枚举 BURST）+ <code>0x91690 = 0x01</code>（内层驱动枚举 CONT_SHOOTING）。
+    只写一个，固件发现不一致会回退。</p>
+    <p>这不是推测：<strong>只写 <code>0x8EF80=0x08</code> 时相机仍是单张；成对写 <code>0x01/0x01</code> 就进连拍</strong>。
+    唯一的变量就是第二个字段有没有跟上。</p>
+  </div>
+
+  <h3>三次独立复现</h3>
+  <table class="tbl">
+    <thead><tr><th>#</th><th>写入前</th><th>写入后</th><th>结果</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td class="mono">08 / 05</td><td class="mono">01 / 01</td><td><span class="st ok">冷启动进连拍</span></td></tr>
+      <tr><td>2</td><td class="mono">00 / 00</td><td class="mono">01 / 01</td><td><span class="st ok">再次成功</span></td></tr>
+      <tr><td>3</td><td class="mono">00 / 00</td><td class="mono">01 / 01</td><td><span class="st ok">成功</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 03 为什么 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">03</span><h2>为什么是这两个值</h2></div>
+  <p class="sec-sub">它们存的不是属性编号，而是枚举表里的「第几项」。</p>
+
+  <p>这是整个项目最大的认知修正。固件里有两张 16 字节一项的枚举表，这两个字节存的是<strong>表内位置索引</strong>：</p>
+
+  <figure>
+    <svg viewBox="0 0 740 210" xmlns="http://www.w3.org/2000/svg">
+      <!-- 左表 -->
+      <text x="8" y="18" font-size="12.5" font-weight="700" fill="#8b929c" letter-spacing=".08em">0x8EF80 · EXTERN_VAL_DRIVE_MODE</text>
+      <g font-size="13" font-family="monospace">
+        <rect x="8"   y="30" width="86" height="30" rx="5" fill="#fff" stroke="#e8eaed"/>
+        <text x="22"  y="50" fill="#565d66">0x00</text><text x="62" y="50" fill="#8b929c">SINGLE</text>
+
+        <rect x="100" y="30" width="86" height="30" rx="5" fill="#eaf6ef" stroke="#1a7f4e" stroke-width="2"/>
+        <text x="114" y="50" fill="#1a7f4e" font-weight="700">0x01</text><text x="150" y="50" fill="#1a7f4e" font-weight="700">BURST</text>
+
+        <rect x="192" y="30" width="94" height="30" rx="5" fill="#fff" stroke="#e8eaed"/>
+        <text x="206" y="50" fill="#565d66">0x02</text><text x="246" y="50" fill="#8b929c">BRACKET</text>
+
+        <rect x="292" y="30" width="100" height="30" rx="5" fill="#fff" stroke="#e8eaed"/>
+        <text x="306" y="50" fill="#565d66">0x08</text><text x="342" y="50" fill="#8b929c">SELF_2S</text>
+      </g>
+
+      <!-- 右表 -->
+      <text x="8" y="98" font-size="12.5" font-weight="700" fill="#8b929c" letter-spacing=".08em">0x91690 · DRIVE_MODE</text>
+      <g font-size="13" font-family="monospace">
+        <rect x="8"   y="110" width="118" height="30" rx="5" fill="#fff" stroke="#e8eaed"/>
+        <text x="22"  y="130" fill="#565d66">0x00</text><text x="62" y="130" fill="#8b929c">1_IMAGE</text>
+
+        <rect x="132" y="110" width="118" height="30" rx="5" fill="#eaf6ef" stroke="#1a7f4e" stroke-width="2"/>
+        <text x="146" y="130" fill="#1a7f4e" font-weight="700">0x01</text><text x="186" y="130" fill="#1a7f4e" font-weight="700">CONT</text>
+
+        <rect x="256" y="110" width="118" height="30" rx="5" fill="#fff" stroke="#e8eaed"/>
+        <text x="270" y="130" fill="#565d66">0x02</text><text x="310" y="130" fill="#8b929c">CONT_LTD</text>
+
+        <rect x="380" y="110" width="118" height="30" rx="5" fill="#fff" stroke="#e8eaed"/>
+        <text x="394" y="130" fill="#565d66">0x08</text><text x="430" y="130" fill="#8b929c">CONT_BRK</text>
+      </g>
+
+      <text x="8" y="176" font-size="13.5" fill="#565d66">
+        连拍 = 两张表都取索引 1 → 所以必须同时写 0x01 和 0x01
+      </text>
+      <text x="8" y="197" font-size="12.5" fill="#8b929c">
+        验证：12 份带标签快照 100% 自洽；27 份全量快照取值集合全部落在表索引范围内
+      </text>
+    </svg>
+    <figcaption>不是「写 1 就是连拍」，而是「两张表都指向第 2 项」</figcaption>
+  </figure>
+
+  <div class="box amber">
+    <div class="t">⚠ 早期猜错过</div>
+    <p>之前按「属性 id」的思路猜候选值 <code>0x01 / 0x04 / 0x10</code>，全错。
+    按<strong>索引</strong>想就只有一个答案：<code>0x01</code>。</p>
+  </div>
+</section>
+
+<!-- ============ 04 持久性 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">04</span><h2>能保持多久</h2></div>
+  <p class="sec-sub">关键在于区分两个阶段：「加载」和「保持」。</p>
+
+  <figure>
+    <svg viewBox="0 0 740 175" xmlns="http://www.w3.org/2000/svg">
+      <!-- 阶段框 -->
+      <rect x="8" y="20" width="200" height="60" rx="8" fill="#fff" stroke="#e8eaed"/>
+      <text x="24" y="44" font-size="14" font-weight="700" fill="#1a1d21">写入 PDT</text>
+      <text x="24" y="64" font-size="12.5" fill="#8b929c">0x8EF80 / 0x91690</text>
+
+      <line x1="214" y1="50" x2="248" y2="50" stroke="#c9ced5" stroke-width="2" marker-end="url(#ar)"/>
+
+      <rect x="254" y="20" width="200" height="60" rx="8" fill="#ecf2f9" stroke="#26578c"/>
+      <text x="270" y="44" font-size="14" font-weight="700" fill="#26578c">拔电池冷启动</text>
+      <text x="270" y="64" font-size="12.5" fill="#26578c">唯一的「加载」时机</text>
+
+      <line x1="460" y1="50" x2="494" y2="50" stroke="#c9ced5" stroke-width="2" marker-end="url(#ar)"/>
+
+      <rect x="500" y="20" width="232" height="60" rx="8" fill="#eaf6ef" stroke="#1a7f4e"/>
+      <text x="516" y="44" font-size="14" font-weight="700" fill="#1a7f4e">连拍生效</text>
+      <text x="516" y="64" font-size="12.5" fill="#1a7f4e">之后怎么重启都不会掉</text>
+
+      <!-- 保持 -->
+      <text x="8" y="112" font-size="12.5" font-weight="700" fill="#8b929c" letter-spacing=".08em">生效后 · 都保持</text>
+      <g font-size="13" fill="#565d66">
+        <text x="8"   y="136">关机再开机</text>
+        <text x="150" y="136">拔电池冷启动</text>
+        <text x="300" y="136">进菜单浏览</text>
+        <text x="430" y="136">切视频模式录视频</text>
+      </g>
+
+      <text x="8" y="166" font-size="13" font-weight="700" fill="#b3352b">唯一会让它掉的：手动修改驱动模式设置（固件把两个字段都写回 0x00）</text>
+    </svg>
+    <figcaption>写入后需要一次冷启动让固件加载；加载之后热重启不会清除</figcaption>
+  </figure>
+
+  <div class="box red">
+    <div class="t">✕ 我错过的两次</div>
+    <p><strong>第一次</strong>：只写一个字段就断定「PDT 不是真值源」—— 其实是状态不完整。<br>
+    <strong>第二次</strong>：以为热重启能生效，让你白试了一轮 —— 「已生效后的保持」不能外推成「首次能生效」。</p>
+  </div>
+</section>
+
+<!-- ============ 05 卡在哪 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">05</span><h2>菜单为什么不显示</h2></div>
+  <p class="sec-sub">三层里前两层都通了，卡在最后一层。</p>
+
+  <figure>
+    <svg viewBox="0 0 740 240" xmlns="http://www.w3.org/2000/svg">
+      <!-- 三层 -->
+      <rect x="8" y="10" width="724" height="58" rx="9" fill="#eaf6ef" stroke="#1a7f4e"/>
+      <text x="26" y="34" font-size="14.5" font-weight="700" fill="#1a7f4e">能力层</text>
+      <text x="26" y="54" font-size="13" fill="#1a7f4e">available0 = 6 → bit1 = BURST 已置位</text>
+      <text x="640" y="44" font-size="20" font-weight="700" fill="#1a7f4e">✓</text>
+
+      <rect x="8" y="78" width="724" height="58" rx="9" fill="#eaf6ef" stroke="#1a7f4e"/>
+      <text x="26" y="102" font-size="14.5" font-weight="700" fill="#1a7f4e">门控层</text>
+      <text x="26" y="122" font-size="13" fill="#1a7f4e">驱动模式字段 → 已用写 PDT 的方式绕过</text>
+      <text x="640" y="112" font-size="20" font-weight="700" fill="#1a7f4e">✓</text>
+
+      <rect x="8" y="146" width="724" height="58" rx="9" fill="#fdeeec" stroke="#b3352b" stroke-width="2"/>
+      <text x="26" y="170" font-size="14.5" font-weight="700" fill="#b3352b">UI 层</text>
+      <text x="26" y="190" font-size="13" fill="#b3352b">菜单渲染 → 不列出连拍，写启用标志也无效</text>
+      <text x="640" y="180" font-size="20" font-weight="700" fill="#b3352b">✕</text>
+
+      <text x="8" y="228" font-size="13.5" fill="#565d66">「可用」≠「显示」—— 能力早就放行，缺的是 UI 那一层</text>
+    </svg>
+    <figcaption>能力层和门控层都通了，瓶颈在 UI</figcaption>
+  </figure>
+
+  <h3>位图长这样</h3>
+  <p><code>available0 = 6</code>，二进制 <code>0b00000110</code>：</p>
+
+  <figure>
+    <svg viewBox="0 0 740 108" xmlns="http://www.w3.org/2000/svg">
+      <g font-family="monospace" font-size="13">
+        <!-- bit 7..0 -->
+        <g>
+          <rect x="8"   y="14" width="60" height="46" rx="6" fill="#fff" stroke="#e8eaed"/><text x="34" y="34" fill="#8b929c" font-size="11">bit7</text><text x="30" y="52" fill="#565d66">0</text>
+          <rect x="74"  y="14" width="60" height="46" rx="6" fill="#fff" stroke="#e8eaed"/><text x="100" y="34" fill="#8b929c" font-size="11">bit6</text><text x="96" y="52" fill="#565d66">0</text>
+          <rect x="140" y="14" width="60" height="46" rx="6" fill="#fff" stroke="#e8eaed"/><text x="166" y="34" fill="#8b929c" font-size="11">bit5</text><text x="162" y="52" fill="#565d66">0</text>
+          <rect x="206" y="14" width="60" height="46" rx="6" fill="#fff" stroke="#e8eaed"/><text x="232" y="34" fill="#8b929c" font-size="11">bit4</text><text x="228" y="52" fill="#565d66">0</text>
+          <rect x="272" y="14" width="60" height="46" rx="6" fill="#fff" stroke="#e8eaed"/><text x="298" y="34" fill="#8b929c" font-size="11">bit3</text><text x="294" y="52" fill="#565d66">0</text>
+
+          <rect x="338" y="14" width="90" height="46" rx="6" fill="#eaf6ef" stroke="#1a7f4e" stroke-width="2"/>
+          <text x="368" y="32" fill="#1a7f4e" font-size="11">bit2</text>
+          <text x="372" y="52" fill="#1a7f4e" font-size="16" font-weight="700">1</text>
+
+          <rect x="434" y="14" width="90" height="46" rx="6" fill="#eaf6ef" stroke="#1a7f4e" stroke-width="2"/>
+          <text x="464" y="32" fill="#1a7f4e" font-size="11">bit1</text>
+          <text x="468" y="52" fill="#1a7f4e" font-size="16" font-weight="700">1</text>
+
+          <rect x="530" y="14" width="90" height="46" rx="6" fill="#fff" stroke="#e8eaed"/>
+          <text x="560" y="32" fill="#8b929c" font-size="11">bit0</text>
+          <text x="570" y="52" fill="#565d66" font-size="16">0</text>
+        </g>
+        <text x="368" y="82" fill="#1a7f4e" font-size="12.5" font-weight="600">BRACKET</text>
+        <text x="458" y="82" fill="#1a7f4e" font-size="12.5" font-weight="600">BURST ← 连拍</text>
+        <text x="556" y="82" fill="#8b929c" font-size="12.5">SINGLE</text>
+      </g>
+      <text x="8" y="104" font-size="13" fill="#565d66">连拍位本来就是 1 —— 所以「改 available」这条路从一开始就不通</text>
+    </svg>
+    <figcaption>available0 的 BURST 位已经置位，说明能力层从未阻止过连拍</figcaption>
+  </figure>
+
+  <div class="box amber">
+    <div class="t">⚠ 据此我的判断变了</div>
+    <p>连拍在 <code>available0</code> 和 <code>available1</code> 两处都标记为可用，但菜单不显示；写启用标志也无效。
+    所以<strong>菜单列表很可能是静态硬编码的</strong>（在 <code>.rodata</code> 或 <code>.uxc</code> 资源里），
+    不随运行时内存变化。</p>
+    <p>如果确实如此，<strong>改内存永远没用 —— 不管写哪个字段。</strong></p>
+  </div>
+</section>
+
+<!-- ============ 06 试过什么 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">06</span><h2>试过的五条路</h2></div>
+  <p class="sec-sub">四条没成，一条只成了一半 —— 但每条都排除了一个可能。</p>
+
+  <div class="route fail">
+    <h3>① 从 PDT 里找可变字段 <span class="st no">未走通</span></h3>
+    <p class="why">用「m0/m1 双读一致性 + 三种模式间有差异」筛，结果只找到 4 个模式字段，没有菜单列表。</p>
+    <p class="lesson">漏洞：菜单列表是<strong>常量</strong>，差分法根本筛不到常量。</p>
+  </div>
+
+  <div class="route fail">
+    <h3>② 搜 PDT 里的常量数组 <span class="st no">未走通</span></h3>
+    <p class="why">条件放宽到「值域 ⊆ 0..16 的连续块」→ 12 万个候选；加严后仍 118 个，判据不足。</p>
+    <p class="lesson">「符合形态」不等于「就是它」。</p>
+  </div>
+
+  <div class="route fail">
+    <h3>③ 找固件里的菜单构造代码 <span class="st no">未走通</span></h3>
+    <p class="why">在 <code>0x015BFB44</code> 找到疑似菜单项构造，dump 字符串后发现配的是<strong>闪光灯补偿</strong>，不是驱动模式。</p>
+    <p class="lesson">属性 id 空间在不同上下文会复用 —— <code>0x0C30</code> 在另一处就配闪光灯。不能只看数字。</p>
+  </div>
+
+  <div class="route win">
+    <h3>④ 跨机型出厂备份对比 <span class="st mid">对齐成功</span></h3>
+    <p class="why">FX30 与 FX3 的 PDT 位移是 <code>−560</code>，对齐后相同率 97–100%。
+    顺带解开了一个困扰很久的假象：<code>0x91690 = 0x0C</code> 不是差异，只是同偏移读把两个不同位置比到了一起。</p>
+    <p class="why">对齐后得到 142 个差异字节，其中 84 字节构成 12 个「7 字节等值组」，最强 3 组是 FX30 全 <code>00</code> / FX3 全 <code>01</code>。</p>
+    <p class="lesson">疑点：全是 0 对全是 1，如果真是「7 个模式可见性」，FX30 连单张都不可见了 —— 与事实矛盾。所以形状像不等于就是它。</p>
+  </div>
+
+  <div class="route win">
+    <h3>⑤ 注入载荷直接读写内存 <span class="st mid">技术打通</span></h3>
+    <p class="why">这是今晚技术上最大的突破：载荷和 appFw 跑在<strong>同一个进程</strong>里（<code>/usr/bin/im.elf</code>），
+    内存可读可写，而且<strong>没有 ASLR</strong>（两次拔插基址都是 <code>0x7F40544000</code>）。</p>
+    <p class="why">用它读到了全部靶点的真实值，也成功写入了启用标志 —— 但菜单没变。</p>
+    <p class="lesson">这条路的限制是：能改内存，改不了静态的菜单定义。</p>
+  </div>
+</section>
+
+<!-- ============ 07 排除清单 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">07</span><h2>已经排除的路径</h2></div>
+  <p class="sec-sub">这些别再试了，每条都有实测依据。</p>
+
+  <table class="tbl">
+    <tbody>
+      <tr><td>只写 <code>0x8EF80</code> 一个字段</td><td>固件回退，相机仍单张</td></tr>
+      <tr><td>用热重启验证写入</td><td>首次生效不加载，必须冷启动</td></tr>
+      <tr><td><code>0x08DC14</code> / <code>0x07A640</code> 当模式字段</td><td>同一模式下有 9 个不同取值，是运行时噪声</td></tr>
+      <tr><td><code>0x603/1</code> 读 BKID 属性</td><td>BKID 族全部 <code>res=129</code>，该通道不服务它</td></tr>
+      <tr><td>zig 编译的 <code>.so</code> 载荷</td><td><code>dlopen</code> 返回 0 但 constructor 不执行 → 只能用 libssp 借壳</td></tr>
+      <tr><td>未对齐就比相同率</td><td><code>delta=0</code> 的 66.5% 是对齐前的数字，对齐后 97–100%</td></tr>
+      <tr><td>跨机型用同一偏移读</td><td><code>0x91690=0x0C</code> 是对齐假象</td></tr>
+      <tr><td><b>写 <code>0x8220844</code> / <code>0x8220845</code></b></td><td><b>写 1 后菜单无变化，已实测排除</b></td></tr>
+      <tr><td>改 <code>available*</code> 让菜单显示</td><td>BURST 位本来就是 1，它已放行，不是瓶颈</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ 08 下一步 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">08</span><h2>下一步</h2></div>
+  <p class="sec-sub">方向从「改内存」转向「找静态菜单列表」。</p>
+
+  <div class="box blue">
+    <div class="t">→ 两条并行的线（都已派给外部执行方）</div>
+    <p><strong>A · 找 UI 的菜单定义</strong><br>
+    在 <code>appFw.so</code> 的 <code>.rodata</code>，或 <code>share/app/*.uxc</code>（50 MB UI 资源）里，
+    找「驱动模式菜单项列表」，确认它到底含不含连拍。</p>
+    <p><strong>B · 三个候选组跨机型普查</strong><br>
+    把 3 个「7 字节组」在 A6700 / A7C2 上也查一遍。
+    如果它们也是 <code>01</code>，就支持「能力位」假设，可以直接写 PDT 验证；如果是 <code>00</code>，候选证伪。</p>
+  </div>
+
+  <h3>还有一个没验证的风险</h3>
+  <p>菜单是否<strong>启动时就缓存好</strong>。如果缓存了，运行时改内存永远看不到效果，
+  必须在数据被读取之前写入 —— 那要改注入时机，难度会明显上升。</p>
+  <p>你试过「退出菜单再进」没有变化，所以倾向于「缓存」或「靶点不对」，二者之一。</p>
+</section>
+
+<!-- ============ 附录 ============ -->
+<section>
+  <div class="sec-head"><span class="sec-num">附</span><h2>命令与文件</h2></div>
+
+  <h3>常用命令</h3>
+  <pre><code>python probe_drive_write.py --burst     # 开启连拍
+python probe_drive_write.py --single    # 回滚单张
+python probe_drive_write.py --probe     # 只看状态
+
+python probe_menu_flags.py --apply      # 试验 7 字节组候选（未验证）
+python probe_menu_flags.py --revert     # 回滚</code></pre>
+
+  <h3>关键文件</h3>
+  <table class="tbl">
+    <tbody>
+      <tr><td><code>FX30-连拍复现实操手册.md</code></td><td>给他人照着做的完整手册（含全部环境坑）</td></tr>
+      <tr><td><code>audit/11–16</code></td><td>机制推导、结论裁决、持久性矩阵、离机分析、四路尝试、PDT 对齐</td></tr>
+      <tr><td><code>audit/TRAE-PACK-4/5.md</code></td><td>外部执行方任务包</td></tr>
+      <tr><td><code>oss/</code></td><td>开源库（已推送 GitHub）</td></tr>
+    </tbody>
+  </table>
+
+  <h3>必须记住的四个操作要点</h3>
+  <div class="box">
+    <p><strong>1. 首次生效必须拔电池冷启动</strong> —— 关机再开机不加载。</p>
+    <p><strong>2. 验证内存写入绝不能重启</strong> —— 重启即丢，什么都看不到。</p>
+    <p><strong>3. 环境要先配 PATH</strong> —— 指向 <code>tools/pmca-src</code>，否则 pyusb 会枚举出幽灵设备。</p>
+    <p><strong>4. 不要两个会话同时操作相机</strong> —— 读数会互相污染。</p>
+  </div>
+</section>
+
+<footer>
+  非官方研究，与 Sony 无关联。固件逆向与设备修改存在风险，可能影响保修，请只在自有设备上操作。<br>
+  文中所有地址与偏移均为逆向分析结果，非官方文档，以实机验证为准。<br><br>
+  2026-10-25 01:30 · 相机当前状态：连拍模式（<code>0x8EF80=0x01</code> / <code>0x91690=0x01</code>）
+</footer>
+
+</div>
+</body>
+</html>
