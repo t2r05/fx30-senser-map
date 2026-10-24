@@ -40,8 +40,15 @@ def main():
         auth = SonySenserAuthDevice(d)
         auth.start(); auth.authenticate()
         cam = SonySenserCamera(device)
-        print("readHasp ok")
-        cam.readHasp()
+        try:
+            hasp = cam.readHasp()
+            n = len(hasp) if hasp else 0
+            if n == 88:
+                print("[+] HASP 88 B  [OK] 服务通道可用")
+            else:
+                print("[!] HASP 长度 %d（期望 88）—— 会话可能未完全建立" % n)
+        except Exception as e:  # noqa: BLE001
+            print("[!] HASP 读取异常: %r" % (e,))
 
         print("\n-- terminal enable packet 1 (ProductInfo TERM_CHANGE) --")
         try:

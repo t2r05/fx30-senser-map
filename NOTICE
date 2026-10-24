@@ -3,6 +3,27 @@ FX30 Service Mode Research
 
 本仓库是 ILME-FX30 固件 6.00 上 USB 服务会话（Senser / Jiritsu）的实测记录。
 
+> **首次使用请先读 [`docs/17-disclaimer-and-boundaries.md`](docs/17-disclaimer-and-boundaries.md)。**
+> 那里有完整的免责声明、脚本风险分级、危险命令清单和已知踩坑。
+
+## 重要声明
+
+- 本项目**仅供学术研究与技术学习**，**不用于任何商业行为**，禁止用于盈利、侵权或非法用途。
+- 本仓库**不包含**任何 Sony 固件二进制、加密密钥、备份数据或受版权保护内容，
+  仅包含研究方法、流程记录与主机侧代码。
+- 本项目与 Sony Corporation 无任何关联，不是 Sony 签名的更新，也不代表 Sony 立场。
+- 请尊重 Sony 知识产权与用户协议；**如 Sony 或其授权方要求，相关内容将立即下架**。
+- 结论仅对应 **ILME-FX30 Ver.6.00**；其他机型 / 其他固件版本须自行复测。
+
+## 硬件风险
+
+固件逆向与设备修改存在**变砖风险**，可能使设备**失去保修**。
+
+- 只在**自有设备**上操作，理解全部风险后再开始。
+- **出错时先停止，不要盲目重试写入。**
+- 任何写操作前**先完整备份**并验证备份可读。
+- 已知的危险命令：`0x4003`(FORMAT)、`0x4006`(FIRMUP)、`0x60F` 区间、设置区全量写。
+
 ## 边界声明
 
 本仓库**不包含**：
@@ -11,14 +32,27 @@ FX30 Service Mode Research
 - 备份数据文件（`0x603 cmd5` 读出的内容）
 - 事件日志导出
 - 机身唯一信息（序列号、产品代码、USB 序列号）
-- 任何写入型脚本
+- 任何编码密钥 / 授权绕过材料
+- 直接把载荷下发到相机的脚本
 
-本仓库**包含**：方法论文档 + 只读探测脚本。
+本仓库**包含**：方法论文档 + 探测脚本。
+
+### 脚本风险分级（简表）
+
+| 级别 | 含义 |
+|---|---|
+| 🟢 纯静态分析 | 不接触相机，只读本地固件镜像（`tools/offline/`） |
+| 🔵 只读探针 | 只发送读请求，不改相机状态 |
+| 🟡 含写操作 | 默认只读，**仅在传入特定参数时**写相机（`probe_fileid_map.py --delete/--mount`） |
+| 🔴 构建型 | 只在主机生成/校验 `.so` 字节码，不含下发脚本 |
+
+完整表格见 [`docs/17-disclaimer-and-boundaries.md`](docs/17-disclaimer-and-boundaries.md) §三。
 
 ## 许可
 
-文档内容采用 **CC BY-SA 4.0**（与上游 YuuLuo/a7c2-service-preload 保持一致）。
-`tools/` 下的脚本采用 **MIT**。
+文档内容采用 **CC BY-SA 4.0**（与上游 YuuLuo/a7c2-service-preload 保持一致），
+许可摘要见 [`LICENSE-DOCS`](LICENSE-DOCS)。
+`tools/` 下的脚本采用 **MIT**，见 [`LICENSE-TOOLS`](LICENSE-TOOLS)。
 
 ## 依赖与来源
 
@@ -41,10 +75,16 @@ cd pmca-src && pip install -r requirements.txt
 | [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) | A6700 固件内存访问方法（`/proc/self/maps` 基址 + 两段偏移）、移植类改动方法论 | 未标注 |
 | [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) | A6700 服务通道与 Pico/BootROM 路线 | GPL-3.0 |
 | [ILCE-7M4-RE](https://github.com/DavidBuchanan314/ILCE-7M4-RE) | BootROM 串口引导、eMMC 加解密（无签名验证） | 见仓库 |
+| [Lincan19540/fx30-firmware-research](https://github.com/Lincan19540/fx30-firmware-research) | FX30 服务模式连接链路（MSC→`054C:0336`、Senser 认证、HASP 88 B）；双句柄隔离坑 | CC BY-NC-SA 4.0 |
+
+第三方项目的版权与许可归原作者所有；完整目录（17 项）见
+[`docs/06-related-projects.md`](docs/06-related-projects.md)。
 
 ## 免责
 
 - 本项目为**非官方**研究，与 Sony 无关。
 - 固件与设备研究存在风险，操作后果自负。
 - 文中结论仅对应 **ILME-FX30 Ver.6.00**；其他版本需自行复测。
-- 请勿上传固件二进制、备份文件或机身唯一信息。
+- 本文所有地址、命令号、结构偏移均为逆向分析结果，**非 Sony 官方文档**，可能存在误判，请以实机验证为准。
+- 本项目按「现状」提供，**不作任何明示或默示担保**（详见 §七 责任限制）。
+- 请勿上传固件二进制、备份文件或机身唯一信息；此类内容一律拒收。

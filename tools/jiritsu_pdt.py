@@ -73,12 +73,33 @@ def enter(driver):
     return device
 
 
+
+def check_hasp(cam):
+    """HASP 服务令牌健康检查 —— 长度必须是 88 字节。
+
+    为什么要这个：早前日志只写「HASP 完成」，不记长度 —— 返回 0 字节也会
+    被当成「完成」，等于没有验收标准。按 Sony 定义，HASP 令牌固定 88 字节
+    （pmca: SONY_PRODUCT_INFO_READ_HASP = (0, 0x001f)，走 pFunc 0x10），
+    长度不对就说明本次会话没真正建立，后续所有读取结果一律不可信。
+    """
+    try:
+        hasp = cam.readHasp()
+        n = len(hasp) if hasp else 0
+        if n == 88:
+            p("[+] HASP 88 B  [OK] 服务通道可用")
+            return True
+        p("[!] HASP 长度 %d（期望 88）—— 本次会话可能未完全建立，结果不可信" % n)
+        return False
+    except Exception as e:  # noqa: BLE001
+        p("[!] HASP 读取异常: %r" % (e,))
+        return False
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     with importDriver("libusb") as driver:
         device = enter(driver)
         cam = SonySenserCamera(device)
-        cam.readHasp()
+        check_hasp(cam)
 
         p("\n=== capturing ===")
         for cat, cmd, fn in TARGETS:

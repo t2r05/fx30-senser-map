@@ -9,6 +9,20 @@
 
 ---
 
+## ⚠️ 重要声明（请先读）
+
+- 本项目**仅供学术研究与技术学习**，**不用于任何商业行为**，禁止用于盈利、侵权或非法用途。
+- 本项目与 Sony Corporation **无任何关联**，不代表 Sony 立场。
+- **固件逆向与设备修改存在变砖风险，可能使设备失去保修。只在自有设备上操作，出错先停止，不要盲目重试写入。**
+- 本仓库**不含**固件二进制、备份数据、机身唯一信息、加密密钥，也不含把载荷下发到相机的脚本。
+- 本文所有地址、命令号、结构偏移均为**逆向分析结果，非 Sony 官方文档**，可能存在误判，请以实机验证为准。
+- 如 Sony 或其授权方提出异议，相关内容将立即下架。
+
+> 📄 完整版：**[`docs/17-disclaimer-and-boundaries.md`](docs/17-disclaimer-and-boundaries.md)**
+> （含脚本风险分级、危险命令清单、责任限制、已知踩坑）
+
+---
+
 ## 一句话结论
 
 FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱动），认证可过 PMCA 内置密钥表；`0x10` / `0x40` 两个 pFunc 可用，`0x1001` Jiritsu 可读**真实根文件系统**，设置区**可读且可全量写**。
@@ -59,7 +73,7 @@ FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱�
 | **FX30 缺 `dial_hi_plus_in_electric_shutter`** | ✅ **四机型确认**（A6700=0x12D5 / A7C2=0x12D1） | [11 §3.1](docs/11-drive-mode-ids.md) |
 | **驱动模式建模代数** | ✅ **三代**（A7C2 独有 `EXPANDED_OPTIONS` 26 条 + `NON_LIMITED`） | [11 §三](docs/11-drive-mode-ids.md) |
 | 官方固件包解包（含加密层） | ✅ **全链路**（UFU → `CXD90057_k8` → fwtool） | [16](docs/16-firmware-unpack.md) |
-| A6700 / A7C2 属性访问器表 stride | ⬜ **未定位**（0x58 结构不成立） | [12](docs/12-property-accessor-table.md) |
+| A6700 / A7C2 属性访问器表 stride | ✅ **已定位**（A6700 `0x50`/10 槽，A7C2 `0x68`/13 槽，**无 id 字段**，以下标寻址） | [12](docs/12-property-accessor-table.md) |
 
 ---
 
@@ -522,7 +536,7 @@ docs/02-command-map.md   命令空间完整图谱（本次测绘核心产出）
 docs/03-backup.md        备份数据结构与 ID 布局验证
 docs/04-dead-ends.md     此路不通的记录（避免重复踩坑，含 6 条实机负结果）
 docs/05-firmware-analysis.md  固件解密与 BKID 定位方法
-docs/06-related-projects.md   相关开源项目目录（其他作者，7 项）
+docs/06-related-projects.md   相关开源项目目录（其他作者，17 项）
 docs/07-jiritsu-breakthrough.md  Jiritsu 写通道（结论修正）与固件结构分析
 docs/08-appfw-capability-table.md  三机型能力表结构与差分结果
 docs/09-realtime-results.md  实机测试结果（0x1001 存在 / 0xff01 未通）
@@ -533,23 +547,26 @@ docs/13-flash-layout.md      官方 partinf.conf / mount.conf 分区与挂载
 docs/14-peer-crosscheck.md   与上游研究者的通道互证（跨机型逐条对照）⭐
 docs/15-payload-elf-rules.md dlopen 载荷的 ELF 结构规则（五条铁律 + 症状对照）⭐
 docs/16-firmware-unpack.md   官方固件包解包（UFU 容器 + 加密 FDAT + 四机型镜像规模）
-tools/                   只读探测脚本（Python / PowerShell）
-tools/offline/           纯静态分析（名称→id→.bss 地址链）
-tools/payload/           载荷构建与结构校验（zig + ELF 自检，不含写入脚本）
-NOTICE                   来源与致谢
+docs/17-disclaimer-and-boundaries.md  免责声明 · 脚本风险分级 · 危险命令清单 · 责任限制 ⭐
+tools/                   探测脚本（Python / PowerShell），按风险分级见 docs/17
+tools/offline/           纯静态分析（名称→id→.bss 地址链），不接触相机
+tools/payload/           载荷构建与结构校验（zig + ELF 自检，不含下发脚本）
+NOTICE                   来源、致谢与重要声明
 ```
 
-**不包含**：固件二进制、备份文件、机身序列号、任何写入型脚本。
+**不包含**：固件二进制、备份文件、机身序列号、加密密钥、把载荷下发到相机的脚本。
 
 ---
 
 ## 安全边界
 
-- 本仓库的工具**只发送读请求**，不写任何数据。
+- **大部分工具只发送读请求**；但 `tools/probe_fileid_map.py` 在传入 `--delete <file_id>` 或 `--mount` 时**会写相机**（删除 `/tmp/jiritsu` 文件 + `0x4002` 重挂）。完整分级见 [`docs/17 §三`](docs/17-disclaimer-and-boundaries.md)。
 - 会话**不可复用**：每次操作应「相机 MSC → 一次运行内完成 → 干净退出 → 断电/拔插」，否则残留状态会让后续认证失败。
 - `0x60F` 区间会使端点进入异常状态，应回避。
 - **`0x4003`(FORMAT) / `0x4006`(FIRMUP) 不要发** —— 同族平台实测会卡死服务。
 - 若要写备份（`cmd 0x02`），务必先留完整原始备份；**备份区写坏可能影响相机启动，该层风险未评估**。
+- **出错先停止，不要盲目重试写入** —— 重复写入会把「一次可恢复的错误」变成「不可恢复的错误」。
+- 所有探针在 `readHasp()` 后会校验长度是否为 **88 字节**；不等于 88 说明本次会话未完全建立，**后续结果一律不可信**。
 
 ---
 
@@ -560,10 +577,11 @@ NOTICE                   来源与致谢
 - [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) — A6700 的内存访问方法与移植方法论
 - [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) — A6700 服务通道与 Pico 路线
 - [nolan2628/Sony-ZVE-10-Camtool](https://github.com/nolan2628/Sony-ZVE-10-Camtool) — dlopen 载荷的 ELF 结构规则、`file_id` 槽位互证、`0x4002` 重挂语义
+- [Lincan19540/fx30-firmware-research](https://github.com/Lincan19540/fx30-firmware-research) — FX30 服务模式连接链路、**HASP 88 B 的正确术语**、双句柄隔离坑
 
 完整相关开源项目目录（核心 16 项，含 A7C2 生态 8 个衍生仓库）见 [`docs/06-related-projects.md`](docs/06-related-projects.md)。
 
-非官方项目，与 Sony 无关。固件研究存在风险，后果自负。
+非官方项目，与 Sony 无关。固件研究存在风险，后果自负。完整免责声明见 [`docs/17`](docs/17-disclaimer-and-boundaries.md)。
 
 ---
 
@@ -599,3 +617,16 @@ A full command map of `pFunc=0x40` is documented, including a 2.25 MB backup blo
 The comparison produced three corrections. First, **id shifts are not uniform**: the `0x02B1` family (electronic-shutter dial positions) moves **+5** in the second generation, while the `0x04B8` family (drive-mode settings) moves only **+1** — so the earlier "A6700 is uniformly +5" note is wrong and no single offset can be used for cross-body conversion. Second, the gap in FX30 is now pinned to a single item: `DRIVE_MODE_CONT_SHOOTING_OPTION_HI_PLUS` **exists** in FX30 (`0x0001`), but `dial_hi_plus_in_electric_shutter` **does not exist at all** (A6700 has `0x12D5`, A7C2 has `0x12D1`) — so writing A6700's id into an FX30 PDT cannot work, because FX30 has no consumer for it. Third, drive-mode modelling has **three** generations, not two: A7C2 2.01 is the only body carrying `DRIVE_MODE_EXPANDED_OPTIONS_*` (26 entries) and `DRIVE_MODE_NON_LIMITED`, and it also has the four `LIMIT_CONT_SHOOTING_HI_PLUS/HI/MID/LO` speed tiers (0x13FB/0x13FD/0x13FF/0x1401) that A6700 2.00 lacks. FX30 and FX3 remain **zero-unique** against each other for the third independent time.
 
 One more trap worth recording: `libJiritsu.so` is **exactly the same size** (233,416 B) on FX30 / A6700 / A7C2, yet SHA-256 differs on all four bodies and `.text` byte-level identity is only **9.6%–9.8%** despite lengths differing by <0.2% — these are different *link instances* of the same source, so block-level identity metrics are useless for similarity here (the same lesson as `docs/05`). All four bodies also carry an `nflasha5` warm-boot image (200–255 MB), which is the quantitative confirmation that "power off then on" is an image restore, not a cold boot. See `docs/16-firmware-unpack.md`.
+
+**Property-accessor table, three generations (2026-10-24, corrected):** the accessor table in `.data.rel.ro` stores its function pointers as zeros in the file — they are restored at load time by `R_AARCH64_RELATIVE` relocations, so the raw file must be walked through `.rela.dyn` and the `r_addend` used to recover each target. The earlier heuristic ("find a strictly increasing id column") does not work for A6700 / A7C2 because neither generation has an id field; the working heuristic is "a record contains several consecutive `.text` function pointers". Measured layouts:
+
+| Body | Table base | Stride | Slots | id field |
+|---|---:|---:|---:|---|
+| FX30 | `0x0402EB20` | `0x58` | 11 | `+0x28` |
+| FX3 | `0x0402ADE8` | `0x58` | 11 | `+0x28` |
+| A6700 | `0x04818040` | `0x50` | 10 | none — index is the id |
+| A7C2 | `0x0571A578` | `0x68` | 13 | none — index is the id |
+
+The FX30 record is **5 accessors + id(+0x28) + 5 accessors**; an earlier document mistook the address of the first id field (`0x0402EB48`) for the record start, which shifted the base and the field offsets by the *same* `0x28` and therefore cancelled out — "look the record up by id" kept working while every pointer read was off by one slot. Such errors can only be exposed by disassembling what was actually read. Also note that four distinct coordinate systems must never be mixed: PDT file offset (`0x8EF80`), the `0x50000`-family property id used by `0x603/1`, the BKID registry id (`0x04B8`), and the `.bss` virtual address (`0x831F82C`).
+
+**A caution worth repeating:** this repository documents a service session, not a way to enable features. Almost every endpoint here is a *read* path, and the few write paths carry real risk of bricking the unit. See `docs/17-disclaimer-and-boundaries.md` for the per-script risk classification, the list of commands that are known to freeze the service, and the liability limits.

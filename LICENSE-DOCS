@@ -1,0 +1,36 @@
+Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
+=================================================================
+
+适用范围：`docs/` 目录、根 `README.md`、`NOTICE`。
+
+You are free to:
+
+  **Share** — copy and redistribute the material in any medium or format
+  **Adapt** — remix, transform, and build upon the material for any purpose, even commercially.
+
+Under the following terms:
+
+  **Attribution** — You must give appropriate credit, provide a link to the license, and
+  indicate if changes were made. You may do so in any reasonable manner, but not in any way
+  that suggests the licensor endorses you or your use.
+
+  **ShareAlike** — If you remix, transform, or build upon the material, you must distribute
+  your contributions under the same license as the original.
+
+  **No additional restrictions** — You may not apply legal terms or technological measures
+  that legally restrict others from doing anything the license permits.
+
+完整许可全文：
+https://creativecommons.org/licenses/by-sa/4.0/legalcode
+
+--------------------------------------------------------------------------
+
+本项目另附独立声明（不改变上述许可条款，仅声明使用意愿与边界）：
+
+- 本项目**仅供学术研究与技术学习**，不用于盈利、侵权或非法用途。
+- 本仓库不包含 Sony 固件二进制、加密密钥、备份数据或受版权保护内容。
+- 与 Sony Corporation 无任何关联；如 Sony 或其授权方提出异议，相关内容将立即下架。
+
+完整版见 `docs/17-disclaimer-and-boundaries.md`。
+
+`tools/` 目录下的脚本适用 **MIT License**，见 `LICENSE-TOOLS`。
