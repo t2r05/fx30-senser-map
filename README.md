@@ -33,6 +33,9 @@ FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱�
 | **`0xff01` FileControl 是否存在** | ❌ **实测未通**（很可能未实现） | 21 组路径 + 空文件名均 128；[09 §2](docs/09-realtime-results.md) |
 | **`category=0x1001` Jiritsu 是否存在** | ✅ **存在（实机确认）** | `res=0` 命令集；[09 §4](docs/09-realtime-results.md) |
 | Jiritsu 命令号 → 语义（GET/SET_FILE…） | ✅ 已定位（18 条） | 07 |
+| **`0x4007` SET_FILE 写入 + `dlopen`** | ✅ **实机（代码已执行）** | [07 §3.1](docs/07-jiritsu-breakthrough.md) |
+| **`file_id` 槽位表（0=配置 / 2=载荷 / 3=日志）** | ✅ **反汇编解出** | [07 §3.2](docs/07-jiritsu-breakthrough.md) |
+| `0x4010` SET_FILE2 语义 | ⬜ 未实测（判定为按路径写） | 07 §3 |
 | **真实根文件系统任意读** | ✅ **实机（SHA-256 验证）** | [10 §1](docs/10-setting-channel.md) |
 | **设置区任意读（含实时值）** | ✅ 实机 | [10 §4](docs/10-setting-channel.md) |
 | **设置区任意写（2.25 MB 全量）** | ✅ 实机 | [10 §6](docs/10-setting-channel.md) |
@@ -366,6 +369,54 @@ struct prop_record { uint64_t id; void *attach; void *stub[8]; uint64_t meta; };
 
 ---
 
+## 进展补充（2026-10-24 · 四）：与上游研究者的通道互证
+
+[`xyzhangxin/sony-a6700-powerful`](https://github.com/xyzhangxin/sony-a6700-powerful) 的作者在 Issue #2 中
+公开了 A6700 的完整三步骤。与 FX30 Ver.6.00 逐条对照后：**骨干逐字节吻合**。
+
+| 对方说法 | FX30 实测 | 判定 |
+|---|---|---|
+| 不走 `0xff03`/`0xff01`，走 Jiritsu | 两者全 128 | ✅ 边界相同 |
+| `pFunc=0x40` / `category=0x1001` | 相同 | ✅ |
+| 载荷 `{area, file_id, transfer_mode}` | `[0, 2, 0] + data` | ✅ **逐字节一致** |
+| `0x4007 / file_id=2` 加载 `libJit.so` | `res=0`，读回自写副作用 | ✅ **已实证执行** |
+| 「固定范围」不是 `0x603/5` 的 BK4 区 | 本仓库独立查明该块是 CP/MP 备份副本 | ✅ 同向 |
+
+### 对方留的空白，本仓库已补上
+
+对方明确提醒：「加载路径仅在 A6700 2.00 验证，FX30 6.00 仍需单独确认，**不能直接套用 A6700 载荷**」。
+
+- 前半句 → **已确认：FX30 6.00 与 A6700 在同一条链路上同构、可用**；
+- 后半句 → **是对的**：本仓库没有套用其载荷，而是借壳本机 `libssp.so`，
+  后改为用 zig 独立构造合法 `.so`（2,192 B，`PT_LOAD` 3 段无 W+X，`DT_INIT_ARRAY → R_AARCH64_RELATIVE`）。
+
+### 两处编号语义仍待实测
+
+| | 对方 | 本仓库（反汇编） |
+|---|---|---|
+| `0x4010` | `file_id=0` = 发送「读取器配置」 | 配合 `0x400F` 的按路径写 |
+| `0x4008 file_id=0` | 取回「执行结果」 | 是 `tmmc.jit`；用 `file_id=3`（`jit.log`）闭环 |
+
+两者**可能不冲突**：若「读取器配置」写在 0 号槽，落点正是 `tmmc.jit` —— 同一件东西两种叫法。
+详见 [`docs/14-peer-crosscheck.md`](docs/14-peer-crosscheck.md)。
+
+### 「260 扇区」说明双方在不同层
+
+对方预检范围是 260 扇区（`260 × 512 = 133,120` 字节）⇒ **块设备扇区层**。
+
+| 层次 | Powerful6700 | 本仓库 |
+|---|---|---|
+| 块设备扇区 | ✅ 260 扇区固定范围 | ❌ |
+| 文件系统（路径） | 未知 | ✅ SHA-256 级验证 |
+| 属性语义（BKID） | ❌ 无 ID | ✅ 25,167 条 BKID + 2,692 条访问器 |
+
+旁证：`0x603/6` 报 PDT size 2,253,052，`0x603/5` 实读 2,253,564，**差 512** —— 正好一个扇区。
+
+⇒ 这是**层次差异，不是对错**。对方说「没有已验证的驱动模式 ID」，是其路线的边界，
+不改变本仓库已解出 `0x04B8`（= 1208）与 104 字节目标区域的事实。
+
+---
+
 ## 未能解决的问题（欢迎协作）
 
 **目标**：为 FX30 启用电子快门连拍（参考 FX3 的四档连拍、A6700 的电子快门 11fps）。
@@ -400,13 +451,14 @@ struct prop_record { uint64_t id; void *attach; void *stub[8]; uint64_t meta; };
 
 | | A6700 | A7C II | **FX30** |
 |---|---|---|---|
-| 文件读取 | ✅ 可读 `/usr/lib/appFw.so` | ✅ 有文件命令 | ⚠️ **待复测**（早期测试方式有误） |
-| 内存通道 | — | — | ⚠️ 未通（128 语义待区分） |
-| 路径穿越 | 有记录 | 有记录（`/tmp/jiritsu/../..`） | 未验证 |
+| 文件读取 | ✅ 可读 `/usr/lib/appFw.so` | ✅ 有文件命令 | ✅ **已实测**（`libJiritsu.so` 233,416 B，SHA-256 一致） |
+| Jiritsu 写入 + `dlopen` | ✅ A6700 2.00 | ✅ 有记录 | ✅ **已实测**（`res=0`，代码已执行） |
+| 内存通道 | 走 Jiritsu（`0xff03` 不用） | — | ⚠️ 未通（128 语义待区分） |
+| 路径穿越 | 有记录 | 有记录（`/tmp/jiritsu/../..`） | ✅ **`/../../` 可越出**，`arg0=0` 分支 |
+| 驱动模式属性 ID | — | — | ✅ **`0x04B8`** + `.bss` 地址已解出 |
 
-> 早期「FX30 的 Cinema Line 分支裁掉了文件通道」的推测**尚未证实**——它源于一次格式错误的 FileControl 调用（见 §2 更正）。
-
-差异来源（**待验证**）：固件分支——FX30 属 Cinema Line，A6700/A7C2 属 Alpha。
+> 早期「FX30 的 Cinema Line 分支裁掉了文件通道」的推测**已被实测否定**。
+> 跨机型互证细节见 [`docs/14-peer-crosscheck.md`](docs/14-peer-crosscheck.md)。
 
 ---
 
@@ -426,6 +478,7 @@ docs/10-setting-channel.md   真实文件系统读写 + 设置区读写（实机
 docs/11-drive-mode-ids.md    BKID 名称→数字 id、三机型对照、两代建模差异 ⭐
 docs/12-property-accessor-table.md  属性访问器表：id → .bss 地址 ⭐
 docs/13-flash-layout.md      官方 partinf.conf / mount.conf 分区与挂载
+docs/14-peer-crosscheck.md   与上游研究者的通道互证（跨机型逐条对照）⭐
 tools/                   只读探测脚本（Python / PowerShell）
 NOTICE                   来源与致谢
 ```
@@ -478,3 +531,5 @@ A full command map of `pFunc=0x40` is documented, including a 2.25 MB backup blo
 **New on the offline side:** the name→id mapping table (16-byte records, ~25,167 entries) gives `BKID_APP_setting_drive_mode_cont_shooting = 0x04B8` (= 1208), matching an independent earlier result. A second table (0x58-byte records, 2,692 ids) holds eight tiny accessor stubs per property whose `adrp + ldr/str` bodies encode the target `.bss` address directly — so every setting id can be mapped to its RAM location **without executing anything**. The burst family lives at `0x831F844`/`0x48`/`0x4C` with copies at `0x8220304`/`0x08` and a mirror at `0x89254F0`; all three clusters must be written together or the mirror rolls it back. FX30 and FX3 share the id space digit for digit; A6700 uses a shifted numbering and a different record layout (the parser does not carry over).
 
 **Conclusion so far:** the burst feature is not missing from FX30 — its firmware contains every related name, list entry and constant, its `.text` is actually 11,128 bytes *larger* than FX3's, and a symmetric instruction-level diff shows 19.41% vs 19.38% unique code (net 10,848 ≈ the size delta), i.e. a **function-level reshuffle**, not per-function rewrites. The remaining gate is runtime, and it can only be read by executing code inside the camera or by reading the `/setting` partition. See `docs/11`, `docs/12`, `docs/13`. No firmware binaries or device-unique data are included.
+
+**Cross-check with upstream (2026-10-24):** the author of `xyzhangxin/sony-a6700-powerful` published their A6700 three-step sequence in Issue #2. Compared against FX30 6.00, the backbone matches **byte for byte** — same `pFunc=0x40` / `category=0x1001`, same `{area, file_id, transfer_mode}` payload prefix (`[0, 2, 0] + data`), and `0x4007 / file_id=2` writing `/tmp/jiritsu/libJit.so`. They cautioned that their loader path was only verified on A6700 2.00 and that FX30 needs separate confirmation, and that A6700 payloads must not be reused directly. Both points are now settled on our side: FX30 6.00 is **verified on-device** (`res=0`, and a self-written side-effect file read back proves the code ran), and we did not reuse their payload — we wrapped the stock `libssp.so` and later built a standalone 2,192-byte `.so` with zig. Two numbering details remain open: they describe `0x4010 / file_id=0` as a "reader configuration" and `0x4008 / file_id=0` as retrieving the result, whereas our disassembly of `get_jiritsu_area_filename()` maps slot 0 to `tmmc.jit` and we close the loop on slot 3 (`jit.log`); both may be the same thing under different names. Finally, their "260 sectors" (~133 KB) indicates access at the **block-device sector layer**, whereas this repository works at the filesystem and property-semantics layers — a difference in level, not a contradiction. See `docs/14-peer-crosscheck.md`.

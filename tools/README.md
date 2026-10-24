@@ -33,6 +33,7 @@ cd pmca-src && pip install -r requirements.txt
 | `jiritsu_deep.py` | `0x604` 特征化、`0x603` 多 payload 试探、`0x610+` 补扫 |
 | `jiritsu_deep2.py` | `cmd 4–16` × 命中类别 + `0x620–0x62F` |
 | `jiritsu_pdt.py` | 落盘 `0x603 cmd5` 全量备份 + 各子命令返回 |
+| `probe_fileid_map.py` | 逐槽 `GET_FILE`（`file_id 0..4`），核对 `get_jiritsu_area_filename()` 索引表；`0x4010` 需显式 `--allow-4010` |
 | `mem_probe.py` | 验证 MemoryDump（`0xff03`）通道 —— 在 FX30 上返回 128 |
 | `term_probe.py` | 诊断服务模式终端端点 —— 在 FX30 上 `writeTerminal` 超时 |
 

@@ -56,12 +56,50 @@ USB MSC → Senser 两阶段认证 → 重枚举 054C:0336 → 服务身份认�
 | 项 | 状态 |
 |---|---|
 | `pFunc=0x40` 通道可达 | ✅ 已实测 |
-| `category 0x1001` 是否存在 | ⬜ **未测** |
-| `0x4007 / 0x4010` 命令语义 | ⬜ 未测 |
-| SET_FILE / libJit 注入 | ⬜ 未测 |
-| 写入后冷重载生效 | ⬜ 未测（A7C2 需取电池 ≥1min，A6700 ≥10s） |
+| `category 0x1001` 是否存在 | ✅ **存在**（`0x4001`–`0x4012` 共 18 条命令） |
+| `0x4007` SET_FILE 语义 | ✅ **已实测** |
+| `0x4010` SET_FILE2 语义 | ⬜ 未实测（反汇编判定为「配合 `0x400F` 的按路径写」） |
+| SET_FILE / libJit 注入 | ✅ **已实测，代码已执行** |
+| 写入后冷重载生效 | ✅ 已实测 |
 
-配套只读探测脚本：`fx30_hack/probe_jiritsu_1001.py`（**只发空 payload，物理上无法写文件**）。
+### 3.1 实机物证（FX30 Ver.6.00）
+
+```
+[0] GET_VERSION 0x400D              -> res=0  len=4   06 00 00 10
+[1] SET_FILE 0x4007 plen=10,187     -> res=0  len=4   00 00 00 00
+[2] GET_FILE 0x4008 [0,3,0]         -> res=0  len=20  b'PWNED-JITLOG-V4\n'
+```
+
+副作用文件由**自写的 ARM64 机器码**产生，不是主机侧回显 ⇒ 代码确实在相机 CPU 上执行。
+
+因此上游那句「加载路径仅在 A6700 验证，其他机型仍需单独确认」可以更新为：
+**FX30 Ver.6.00 与 A6700 在该链路上同构、可用。**
+
+### 3.2 `file_id` 槽位表（`libJiritsu.so` 反汇编）
+
+`get_jiritsu_area_filename()` @ `0x1236C`，跳转字节 `1C 00 13 16 19`，目标 `0x8F2C + byte*4`：
+
+| `file_id` | 路径 |
+|---|---|
+| 0 | `/tmp/jiritsu/tmmc.jit` |
+| 1 | `/tmp/jiritsu/DIAC.csv` |
+| **2** | **`/tmp/jiritsu/libJit.so`** |
+| 3 | `/tmp/jiritsu/jit.log` |
+| 4 | `/tmp/jiritsu/history.txt` |
+
+`file_id > 4` 时改走 `0x470AD8` 的 34 项查找表（16 B/项 `{u8 id, pad, u64 path_ptr}`）。
+
+> `file_id = 2 → libJit.so` 与 A6700 项目 `packet_builder.py` 的 `file_id = 2` 完全一致 —— 跨机型互证。
+
+### 3.3 ⚠️ 用完必须删
+
+`/tmp/jiritsu` 是 `/dev/nflasha6`（`nflasha6 = Jiritsu`，25 MB **flash 分区**）的真实挂载点，
+**写入的文件跨重启保留，并会被固件反复 dlopen**。测试载荷用完必须用
+`FILE_DELETE`（`0x4009` / `0x4012`）删除并读回确认。
+
+配套只读探测脚本：
+- `fx30_hack/probe_jiritsu_1001.py` — 只发空 payload
+- `fx30_hack/probe_fileid_map.py` — 逐槽 `GET_FILE` 读回，核对上面的槽位表
 
 ---
 

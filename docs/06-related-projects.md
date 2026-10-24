@@ -3,7 +3,7 @@
 > 本项目研究过程中**参考 / 对照 / 邻近的其他作者开源项目**汇总。仅列项目名、仓库与一句话定位，便于溯源与逐个学习。
 > **不含任何固件内容、备份数据或机身唯一信息。**
 
-核验日期：2026-10-23。
+核验日期：2026-10-24。
 
 ## 目录
 
@@ -14,7 +14,7 @@
 | 3 | **a7c2-service-preload** | [YuuLuo/a7c2-service-preload](https://github.com/YuuLuo/a7c2-service-preload) | 上游 · 机理 | A7C II 服务模式预加载与代码执行链路 |
 | 4 | **ILCE-7M4-RE** | [DavidBuchanan314/ILCE-7M4-RE](https://github.com/DavidBuchanan314/ILCE-7M4-RE) | 上游 · 逆向 | A7M4 逆向笔记（bootrom / serial boot） |
 | 5 | **Sony-PMCA-RE** | [ma1co/Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE) | 上游 · 基础库 | Sony 服务协议基础实现（Senser / print_backup / fwtool） |
-| 6 | **FireHydrant** | [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) | 相关 · 内存 | A6700 内存访问方法 |
+| 6 | **FireHydrant** | [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) | 相关 · 方法论 | A6700 内存访问方法 + 改动分层验证框架（纯文档，无地址/代码） |
 | 7 | **Recipe Lab** | [voxivoid/recipe-lab-sony-pmca](https://github.com/voxivoid/recipe-lab-sony-pmca) | 相关 · 生态 | 基于 PMCA 的创意外观 App |
 
 ## 说明
@@ -29,6 +29,58 @@
 - **a7c2-service-preload**：记录从 USB 服务会话到**一次性 root 代码执行**的完整链路（Jiritsu 文件命令 + 路径穿越 + `/etc/ld.so.preload`）。理解「写通道」的关键文档；**注意其为临时 RCE，不永久关闭签名校验**。
 - **ILCE-7M4-RE**：A7M4 逆向笔记（含 bootrom / serial boot 思路），Powerful6700 明确参考。
 - **Sony-PMCA-RE**：本项目与上述项目共同的基础——认证帧、Senser 协议、`print_backup`、`fwtool.py`。
+
+### FireHydrant（A6700，纯方法论，2026-10-22 更新）
+
+四篇文档，**刻意不含地址、偏移、哈希与脚本**（作者说明：给出「位置 + 前后字节」等于给出可照抄的补丁，会让人跳过版本校验与回滚设计）。因此它的价值全在方法与判断框架：
+
+| 文档 | 可迁移内容 |
+|---|---|
+| `DEVICE_CHANNEL.md` | `/proc/self/maps` 取 base；两段 LOAD 与三套地址基准不可混用；改代码段须 `dc civac` + `ic ivau`；私有映射 + COW ⇒ 运行时改动断电即恢复 |
+| `fl2_fl3/README.md` | 三条独立证据（符号/参数 · **参数链** · 准入层）；三层改动分开验证；「只切电源开关不够，必须拔电池」；「运行时补丁会掩盖文件改动」 |
+| `cine_ei/README.md` | **菜单准入 / 支持层 / 计算基准** 三层模型；「菜单可见 ≠ 可用」「可选 ≠ 链路打通」；运行期改准入 → **原厂 setter 自己持久化** |
+
+**本项目已独立核对的两处数据**（对方只给了两个精确字节数，均可验证）：
+
+| 对方说法 | 实测 | 结果 |
+|---|---|---|
+| 应用主程序载体 89,027,992 B | A6700 `lib/appFw.so` = 89,027,992 B | ✅ 精确吻合 |
+| CP 模式数据文件 17,892,024 B | A6700 `nflasha8_unpacked/cpapp-b.bin` = 17,892,024 B | ✅ 精确吻合，且与官方 `partinf.conf` 的 `nflasha8 = CP Data` 互证 |
+
+**两处我方对其结论的限定**：
+
+1. 「`libJit.so` 放模块会遮蔽原库」——**对 A6700 成立；FX30 上该槽初始为空**（`GET_FILE` 返回 `0x10000006` file non-existent），但**可以写入并会被 dlopen**，见下方 2026-10-24 更新。
+2. 「」中提到的「约 114 对禁止计数/限制字节」属 **Cine EI / Log shooting 课题**，与驱动模式/连拍无关，不要混用。
+
+**注意**：`/tmp/jiritsu` 位于 `nflasha6`（Jiritsu 25 MB，flash 分区），残留文件**跨重启保留并在后续加载时再次执行** —— 与 A6700 一致，用完必须 `FILE_DELETE (0x4009)`，不能靠断电清除。
+
+---
+
+## Powerful6700 作者 2026-10-24 的公开回复（Issue #2 交叉核验）
+
+对方（`xyzhanxin`）在 A6700 项目 Issue #2 下回复了本项目的提问，核心内容与本项目实测的对照：
+
+| 对方说法 | 本项目 FX30 Ver.6.00 实测 | 判定 |
+|---|---|---|
+| 不走 `0xff03` MemoryDump / `0xff01` FileControl，走 Senser 认证后的 Jiritsu 文件服务 | 两者在 FX30 上**全部 128** | ✅ 边界相同 |
+| `pFunc=0x40` / `category=0x1001` | 相同（`0x4001`–`0x4012`） | ✅ |
+| 载荷前缀 `{area=0, file_id, transfer_mode=0}` | `[0, 2, 0] + data`，**逐字节一致** | ✅ 字节级互证 |
+| `0x4007 SET_FILE / file_id=2` 加载 `/tmp/jiritsu/libJit.so` | `res=0`，读回自写副作用 `PWNED-JITLOG-V4` | ✅ **已实证执行** |
+| 「固定范围」不是 `0x603/0x05` 的 BK4 设置区 | 本项目独立判定 PDT 是 CP/MP 参数**备份副本**，启动不从它恢复 | ✅ 同向 |
+| `0x4010 SET_FILE_2 / file_id=0` = 发送「读取器配置」 | 反汇编判定 `0x4010` = 配合 `0x400F` 的**按路径写**；`file_id=0` 落点 `tmmc.jit` | ⚠️ 编号语义待实测 |
+| `0x4008 GET_FILE / file_id=0` = 取回「执行结果」 | `file_id=0` 是 `tmmc.jit`；本项目用 `file_id=3`（`jit.log`）闭环成功 | ⚠️ 同上 |
+| 加载路径「仅在 A6700 2.00 验证，FX30 6.00 仍需单独确认」 | **已确认**：FX30 6.00 同构可用 | 🟢 本方补上 |
+| 「目前没有已验证的驱动模式属性 ID 可提供」 | 本项目已解出 `BKID_APP_setting_drive_mode_cont_shooting = 0x04B8` 与属性访问器表 | 🟢 路线不同 |
+
+**两条路线差异**（不是冲突，是层次不同）：
+
+| 层次 | Powerful6700 | 本项目 |
+|---|---|---|
+| 块设备扇区 | 260 扇区（`260 × 512 = 133,120` B）固定范围 | 未做 |
+| 文件系统路径 | — | `0x400F` + `0x4011` 任意路径读，SHA-256 级验证 |
+| 属性语义（BKID） | 无 ID | BKID 表 25,167 条 + 属性访问器表 2,692 条 id |
+
+> 旁证：`0x603/6` 报 PDT size = 2,253,052，`0x603/5` 实读 2,253,564，差 **512** —— 正好一个扇区，说明这条链路本身也是扇区对齐搬运。
 
 ## 对本项目（FX30）的意义
 
