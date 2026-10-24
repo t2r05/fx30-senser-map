@@ -27,10 +27,21 @@
 
 FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱动），认证可过 PMCA 内置密钥表；`0x10` / `0x40` 两个 pFunc 可用，`0x1001` Jiritsu 可读**真实根文件系统**，设置区**可读且可全量写**。
 
-**但这些通道都读不到驱动模式的运行时值。** 已实测排除：PDT 文件（是 CP/MP 芯片备份副本）、单字节 `0x8EF80`（可持久化但只是记录）、`0x603/1` 属性表（单张 vs 自拍定时 1,024 条零差异）。
+**✅ 已可开启隐藏连拍模式**（2026-10-24 实机验证）：成对写入设置区两个字节
+`0x8EF80=0x01` + `0x91690=0x01`，**拔电池 ≥30 秒冷启动**后相机进入连拍且能正常连拍
+（菜单不显示该选项，手动切换即掉回）。
 
-**目前最硬的成果是离线的**：连拍 `id = 0x04B8` 已定位，`id → 运行时 .bss 地址` 的映射表已解出（2,692 条），且已证明 FX30 固件里连拍**一样都不缺**——它比有连拍的 FX3 代码还多。
-⇒ **连拍不是功能缺失，是运行时被门控。**
+```bash
+python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
+```
+
+**同时推翻了此前「三条路都封死」的判断**：驱动模式**不在** `0x603/1` 属性表里
+（那 1,024 条与模式零差异是对的，但不是「读不到真值」，而是「那里根本没有这个字段」），
+而在 PDT 设置区的**两张枚举表位置索引**上。详见「进展补充（2026-10-24 · 四）」。
+
+**目前最硬的离线成果**：连拍 `id = 0x04B8` 已定位，`id → 运行时 .bss 地址` 的映射表已解出（2,692 条），
+且已证明 FX30 固件里连拍**一样都不缺**。
+⇒ **连拍不是功能缺失，是被「模式设置」门控** —— 而那个开关，现在已经能扳动。
 
 ---
 
@@ -60,10 +71,12 @@ FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱�
 | 连拍 id = `0x04B8`（= 1208） | ✅ 已定位 | [11 §1](docs/11-drive-mode-ids.md) |
 | **id → 运行时 `.bss` 地址** | ✅ **已解出**（2,692 条） | [12](docs/12-property-accessor-table.md) |
 | 三机型驱动模式 id 对照 | ✅ 已比对（FX30 ≡ FX3 逐位相同） | [11 §2](docs/11-drive-mode-ids.md) |
-| **`0x8EF80` 是否模式真值源** | ❌ **控制实验否定**（可持久化但不生效） | [04 §13](docs/04-dead-ends.md) |
-| **`0x603/1` 属性表是否反映模式** | ❌ **实测零差异**（1,024 条全扫） | [04 §14](docs/04-dead-ends.md) |
-| 连拍对应的模式值 | ⬜ 未确定 | 04 §13 |
-| 三处 `.bss` 副本的同步写顺序 | ⬜ 待验证 | 12 §4 |
+| **`0x8EF80` 是否模式真值源** | ✅ **是**（2026-10-24 实机，成对写入后冷启动生效） | [进展补充 · 六](README.md#进展补充2026-10-24--六连拍写入成功--隐藏连拍模式开启) |
+| **`0x8EF80` / `0x91690` 的存储语义** | ✅ **枚举表 0-based 位置索引**（12 份带标签快照 100% 自洽） | 同上 |
+| **连拍对应的模式值** | ✅ **已确定**：`0x8EF80=0x01` + `0x91690=0x01`（成对） | 同上 |
+| **开启隐藏连拍模式** | ✅ **实机验证**（冷启动后进连拍、能正常连拍，菜单不显示该选项） | 同上 |
+| **`0x603/1` 属性表是否反映模式** | ❌ 实测零差异（1,024 条全扫）—— 但结论方向已修正：**该表不是驱动模式的载体** | [04 §14](docs/04-dead-ends.md) |
+| 三处 `.bss` 副本的同步写顺序 | ⬜ 待验证（**已可绕过**：直接写 PDT） | 12 §4 |
 | 连拍补丁（16 处 `00→01`） | ❌ 已撤回（假阳性） | 08 顶部警告 |
 | **dlopen 载荷的最小合法 ELF 结构** | ✅ **五条铁律 + 2,064 B 参考产物** | [15](docs/15-payload-elf-rules.md) |
 | **`file_id` 槽位表（第三方独立印证）** | ✅ 已互证（0/3 号槽确认） | [15](docs/15-payload-elf-rules.md)、06 §3.3 |
@@ -288,25 +301,28 @@ GET_FILE2   (0x4011)  [0x00, 0xFF, 0x00]
 | 路径 | `bk.elf` 引用 `/setting/Backup.bin` 与 `/setting/Backup.bak` |
 | 挂载 | `mount.conf`：`nflasha2 → /setting`（20 MB vfat） |
 
-⇒ **固件启动时不从这个文件恢复任何用户设置**，所以改它必然无效。
+⇒ ~~**固件启动时不从这个文件恢复任何用户设置**，所以改它必然无效。~~ ❌ **已被推翻，见下节「进展补充（2026-10-24 · 三）」。**
 
-### 2. 控制实验：`0x8EF80` 是「记录」不是「真值源」
+### 2. ~~控制实验：`0x8EF80` 是「记录」不是「真值源」~~ ❌ **已被推翻**
 
-写 `0x08`（自拍定时）→ 全量写回 `res=0`、save `res=0`、读回 `0x08` 已生效 → **断电重启后相机仍是单张**，而字节仍为 `0x08`。
+~~写 `0x08`（自拍定时）→ 全量写回 `res=0`、save `res=0`、读回 `0x08` 已生效 → **断电重启后相机仍是单张**，而字节仍为 `0x08`。~~
+~~⇒ 可写、可持久化，但**不是运行时真值源**。~~
 
-⇒ 可写、可持久化，但**不是运行时真值源**。
-
-附带撤回一条：早前写 `0x01` 被归一化回 `0x00`，据此判断「`0x01` 非法」——**不成立**，归一化只是「固件把内存真值写回文件」。`0x01`/`0x03`/`0x04` 恢复待定。
+**错在两点**：① 只写了 `0x8EF80`，配套的 `0x91690` 没写 ⇒ 状态不完整 ⇒ 固件回退；
+② 用的是**关机再开机（热重启）**验证，走暖启动镜像恢复路径，把状态刷掉了。
 
 ### 3. `0x603/1` 的 1,024 条属性表与模式零差异
 
 裸 4 字节 id 扫 `0x50000`–`0x503FF`：`res=0` **825 条**、129 的 199 条、非零 116 条。
 `--tag=single` vs `--tag=timer` 全扫差分：**值不同 0 条**。
 
-### 4. 结论：进服务模式后 appFw 已不在「正常拍摄状态」
+### 4. ~~结论：进服务模式后 appFw 已不在「正常拍摄状态」~~ ❌ **已被推翻**
 
-两条 USB 可达通道读的都是**静态/持久化副本**。这同时解释了三个此前互看似矛盾的现象：
-PDT 里有字节随模式变却改了不生效、属性表零差异、`0x8EF80` 保住了但相机不理它。
+~~两条 USB 可达通道读的都是**静态/持久化副本**。这同时解释了三个此前互看似矛盾的现象：
+PDT 里有字节随模式变却改了不生效、属性表零差异、`0x8EF80` 保住了但相机不理它。~~
+
+**这条「三条路都封死」的结论是错的** —— 真相是：**属性表（`0x603/1`）根本不是驱动模式的载体，
+而 PDT 是真值源，只是当时写漏了配套字段。** 见下节。
 
 详见 [`docs/04-dead-ends.md`](docs/04-dead-ends.md) §13–§18、[`docs/13-flash-layout.md`](docs/13-flash-layout.md)。
 
@@ -389,6 +405,70 @@ struct prop_record { uint64_t id; void *attach; void *stub[8]; uint64_t meta; };
 | `nflasha6` | （漏项） | **Jiritsu 25 MB** ← 解释了 `SET_FILE_PATH` 的 `/tmp/jiritsu` base |
 
 详见 [`docs/11-drive-mode-ids.md`](docs/11-drive-mode-ids.md)、[`docs/12-property-accessor-table.md`](docs/12-property-accessor-table.md)、[`docs/13-flash-layout.md`](docs/13-flash-layout.md)。
+
+---
+
+## 进展补充（2026-10-24 · 六）：✅ 连拍写入成功 —— 隐藏连拍模式开启
+
+> **本节是当前仓库最有价值的实机结论，且推翻了前面三节的多条结论。**
+
+### 1. 一行命令
+
+```bash
+python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
+# → 拔电池 ≥30 秒冷启动 → 相机进入连拍，能正常连拍
+```
+
+**这是隐藏模式**：驱动模式菜单里**不显示**该选项，一旦手动切换菜单就会掉回。
+但按住快门确实连拍。
+
+### 2. `0x8EF80` / `0x91690` 存的是**枚举表位置索引**，不是属性 id
+
+这是此前最大的误判。固件里 `.data.rel.ro` 有两张 16 字节/项的枚举值表
+（`{char* name; u32 id; u16 code}`）：
+
+| 偏移 | 枚举表 | 表基 vaddr | `0x00` | `0x01` | `0x02` | `0x05` | `0x08` | `0x09` | `0x0C` |
+|---|---|---|---|---|---|---|---|---|---|
+| `0x8EF80` | `EXTERN_VAL_DRIVE_MODE_*` | `0x41A0550` | SINGLE | **BURST** | BRACKET | RAW_BURST | SINGLE_SELF_2S | BURST_SELF_10S | SINGLE_SELF_5S |
+| `0x91690` | `DRIVE_MODE_*` | `0x41A28F0` | 1_IMAGE_SHOOTING | **CONT_SHOOTING** | CONT_SHOOTING_LIMITED | SELF_TIMER | CONT_BRACKET | BRACKET_SINGLE | DRO_ADV_BRACKET |
+
+12 份带标签快照 100% 自洽；27 份全量快照在这两个偏移上的取值集合
+（`0x8EF80` ∈ {0,1,2,8,12}，`0x91690` ∈ {0,5,9}）**全部落在表索引范围内**。
+
+⇒ 此前「连拍候选是 `0x01`/`0x04`/`0x10`」是按 `id` 猜的；按**索引**只需 `0x01`。
+
+### 3. 两个字段必须**成对写**
+
+它们是同一设置的两层表示。只写一个 ⇒ 固件发现不一致 ⇒ **回退**。
+
+这正是 10-24 那次「写了没生效」的真正原因 —— 当时只写了 `0x8EF80=0x08`，
+`0x91690` 仍是 `0x00`，两个字段不一致。
+
+反证：本次成对写入后，**固件自己把第三字段 `0x8DC14` 从 `0xCE` 联动改成了 `0xCF`** ——
+只有两字段一致时固件才会去联动派生量。
+
+### 4. 两个必须记住的坑
+
+| 坑 | 说明 |
+|---|---|
+| **关机 ≠ 冷启动** | 热重启（关机再开机）走 `nflasha5` 暖启动镜像恢复，会吃掉改动。**判定必须拔电池 ≥30 秒** |
+| **会话结束相机会重枚举** | 跑完脚本后相机回到 PTP（PID `096F`），下次要重新切「海量存储器」并插拔 |
+
+### 5. 顺带排除：`0x603` 的两套命令面
+
+历史文档把 `0x603` 当成唯一命令面，实测是**两套**：
+
+| 命令面 | 语义 | 实测 |
+|---|---|---|
+| `cat=0x1001, cmd=0x603` | 设置区备份 / 写回 | **对任何 id 都返回固定 `01 02 00 10`**（连边界 id 也一样）⇒ 是 ack，**不是属性值** |
+| `cat=0x0603, cmd=0x0001` | 属性单条读 | BKID 族全部 `res=129`；`0x5000C` 返回 `f1 5d 00 00`（有数据） |
+
+⇒ 历史文档里「payload 首字节是 namespace」那条推理线**建立在固定 ack 上，是伪命题**。
+⇒ **BKID 注册表 id 在这条通道上不通**，读取路线走不通。
+
+详见 [`tools/README.md`](tools/README.md) 的「驱动模式写入」一节、
+[`docs/04-dead-ends.md`](docs/04-dead-ends.md) §十三更正块、
+[`docs/13-flash-layout.md`](docs/13-flash-layout.md) §三更正块。
 
 ---
 
@@ -487,6 +567,10 @@ struct prop_record { uint64_t id; void *attach; void *stub[8]; uint64_t meta; };
 
 **目标**：为 FX30 启用电子快门连拍（参考 FX3 的四档连拍、A6700 的电子快门 11fps）。
 
+> **2026-10-24 更新：主目标已达成。** 写入 `0x8EF80=0x01` + `0x91690=0x01`
+> 并冷启动后，相机进入连拍且能正常连拍（**隐藏模式**，菜单不显示该选项）。
+> 见「进展补充（2026-10-24 · 六）」。以下是**尚未解决**的部分。
+
 **已确定的事实**：
 
 1. FX30 固件里**连拍相关的每一个名字都在**——`BKID_APP_setting_drive_mode_cont_shooting`（`0x04B8`）、
@@ -495,12 +579,19 @@ struct prop_record { uint64_t id; void *attach; void *stub[8]; uint64_t meta; };
 2. FX30 与 FX3 设置项注册表 **843 条零差异**；`.dynsym` FX3 **独有 0 个**；FX30 的 `.text` 反而**大** 11,128 字节。
 3. 指令级对称差分：A 独有 19.41% / B 独有 19.38%，净差 10,848 ≈ `.text` 尺寸差 ⇒ **函数级重排**，不是逐函数改写。
 4. 连拍值在 **`.bss`（RAM-only）**，地址已解出（`0x831F844` 一族 + 两处副本）。
+5. **门控开关就是设置区里的驱动模式字段**，已可从 USB 侧直接改。
 
-⇒ **连拍不是功能缺失，是运行时被门控。** 门控不需要新 API，只要一个开关值。
+⇒ **连拍不是功能缺失，是被「模式设置」门控。** 那个开关已经能扳动了。
 
-**卡点**：进入 USB 服务模式后 appFw 已离开「正常拍摄状态」，
-两条 USB 可达通道（`0x603/5` 的 2.25 MB PDT、`0x603/1` 的 825 条属性表）读的都是静态副本。
-读运行时真值需要**在相机内执行代码**（已有 `libssp.so` 借壳 + `.init_array` 方案），或走 `/setting` 分区文件读取。
+**仍未解决**：
+
+| # | 问题 | 说明 |
+|---|---|---|
+| 1 | **连拍速度档位** | 隐藏连拍目前是什么速度？`DRIVE_MODE_CONT_SHOOTING_OPTION_{HI_PLUS,HI,MID,LOW}`（表基 `0x41B4FB0`）如何与设置区字段联动？**注意 FX30 固件里 `customFps_Elec_*` 零命中**（无速度调节项），可能是机型裁剪 |
+| 2 | **为什么菜单不显示该选项** | 隐藏 ⇒ 菜单项的可用性判定读的是别的状态（`.bss` 镜像？），需要弄清才能让它「正常显示」 |
+| 3 | **电子快门 11fps** | A6700 用同传感器实现了 11fps，FX30 硬件无阻碍，但 `dial_hi_plus_in_electric_shutter` 在 FX30 **根本不存在**（不是 id 找不到，是消费方不存在）⇒ 可能需要更深的固件改动 |
+| 4 | **其余隐藏模式枚举** | `EXTERN_VAL_DRIVE_MODE_*` 表共 17 项，只验证了 BURST。候选：`SPEED_PRIOR_BURST` / `RAW_BURST` / `BOL_BURST` 等（索引对应关系需逐个实测） |
+| 5 | `0x08DC14` 语义 | 第三派生字段，固件自动联动改写，语义未定 |
 
 **需要的对比基准**（任一即可，仍然有效）：
 
@@ -560,8 +651,10 @@ NOTICE                   来源、致谢与重要声明
 
 ## 安全边界
 
-- **大部分工具只发送读请求**；但 `tools/probe_fileid_map.py` 在传入 `--delete <file_id>` 或 `--mount` 时**会写相机**（删除 `/tmp/jiritsu` 文件 + `0x4002` 重挂）。完整分级见 [`docs/17 §三`](docs/17-disclaimer-and-boundaries.md)。
+- **大部分工具只发送读请求**；但 `tools/probe_fileid_map.py` 在传入 `--delete <file_id>` 或 `--mount` 时**会写相机**（删除 `/tmp/jiritsu` 文件 + `0x4002` 重挂），`tools/probe_drive_write.py` **每次运行都会写设置区**（驱动模式）。完整分级见 [`docs/17 §三`](docs/17-disclaimer-and-boundaries.md)。
 - 会话**不可复用**：每次操作应「相机 MSC → 一次运行内完成 → 干净退出 → 断电/拔插」，否则残留状态会让后续认证失败。
+- **关机 ≠ 冷启动**：关机再开机是**热重启**，走 `nflasha5` 暖启动镜像恢复，会吃掉设置区改动。**验证写操作必须拔电池 ≥30 秒。**
+- **会话结束后相机会重枚举回 PTP**（PID `096F`）；下一次跑脚本要重新把 USB 模式切回「海量存储器」并插拔。
 - `0x60F` 区间会使端点进入异常状态，应回避。
 - **`0x4003`(FORMAT) / `0x4006`(FIRMUP) 不要发** —— 同族平台实测会卡死服务。
 - 若要写备份（`cmd 0x02`），务必先留完整原始备份；**备份区写坏可能影响相机启动，该层风险未评估**。
@@ -600,13 +693,26 @@ A full command map of `pFunc=0x40` is documented, including a 2.25 MB backup blo
 
 **Current state:** `feature_id = 419` is `DRIVE_MODE_CONT_SHOOTING`, and its flags are **identical on FX30 and FX3**, so the capability table is not the switch. Three later findings closed the remaining USB-side possibilities:
 
-1. **The 2.25 MB "PDT" blob is not user settings.** It is `/setting/Backup.bin`, a dump that `bk.elf` (`bk g[ChipID] BackupID`, `c:CP / m:MP`) reads out of the CP/MP chip; the factory copy shipped in the firmware package is byte-identical in size (2,253,564). The firmware never restores settings from it, which is why writing bytes into it changes nothing.
-2. **A control experiment ruled out the single byte.** Writing `0x08` (self-timer) persisted across a power cycle but the camera still booted in single-shot mode.
+1. **The 2.25 MB "PDT" blob is not user settings.** It is `/setting/Backup.bin`, a dump that `bk.elf` (`bk g[ChipID] BackupID`, `c:CP / m:MP`) reads out of the CP/MP chip; the factory copy shipped in the firmware package is byte-identical in size (2,253,564).
+2. **A control experiment appeared to rule out the single byte.** Writing `0x08` (self-timer) persisted across a power cycle but the camera still booted in single-shot mode.
 3. **The per-id table (`0x603/1`) is mode-independent.** A full 1,024-entry scan in single-shot vs self-timer mode showed **zero** differing values.
+
+**Update (2026-10-24, later the same day) — items 1 and 2 above are now corrected, and the burst mode has been enabled on-device.** The apparent dead end was a methodology error, and it is worth recording precisely:
+
+* The 2.25 MB blob **is** the boot-time truth source after all. What was missing was the *second* field: `0x8EF80` and `0x91690` are **two layers of the same setting**, and writing only one of them makes the firmware fall back to single-shot. Verification also has to be a **cold boot** (battery out for ≥30 s) — powering off and on again is a *warm* restart that restores the `nflasha5` image and wipes the change.
+* The two offsets do **not** store property ids; they store **0-based positions in two enumeration tables** in `.data.rel.ro` (16-byte records `{char* name; u32 id; u16 code}`): `0x8EF80` → `EXTERN_VAL_DRIVE_MODE_*` (table base `0x41A0550`), `0x91690` → `DRIVE_MODE_*` (table base `0x41A28F0`). All 12 labelled snapshots map consistently, and the value sets observed across 27 snapshots (`0x8EF80` ∈ {0,1,2,8,12}, `0x91690` ∈ {0,5,9}) fall entirely inside the table index ranges. This is why earlier "candidate burst values `0x01`/`0x04`/`0x10`" guesses — derived by treating them as ids — were wrong.
+* Writing `0x8EF80=0x01` **and** `0x91690=0x01` together, then cold-booting, puts the camera into **burst shooting** — verified on-device: it actually bursts. It is a **hidden mode**: the drive-mode menu does not show the entry, and touching the menu drops it back.
+* The firmware itself corroborates the "pair" requirement: after the paired write it **rewrote a third field on its own** (`0x8DC14`, `0xCE` → `0xCF`) — it only derives that value when the first two agree.
+
+```bash
+python tools/probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
+```
+
+* A related correction: `0x603` has **two distinct command faces** that earlier documents conflated. `category=0x1001, command=0x603` returns the **same fixed `01 02 00 10` for every id** (including boundary ids) — it is an ack, not a property value — while `category=0x0603, command=0x0001` is the per-id read, and the BKID registry ids are not reachable there (all `res=129`). The historical "the first payload byte is a namespace" line of reasoning therefore rested on a fixed ack and is a false premise.
 
 **New on the offline side:** the name→id mapping table (16-byte records, ~25,167 entries) gives `BKID_APP_setting_drive_mode_cont_shooting = 0x04B8` (= 1208), matching an independent earlier result. A second table (0x58-byte records, 2,692 ids) holds eight tiny accessor stubs per property whose `adrp + ldr/str` bodies encode the target `.bss` address directly — so every setting id can be mapped to its RAM location **without executing anything**. The burst family lives at `0x831F844`/`0x48`/`0x4C` with copies at `0x8220304`/`0x08` and a mirror at `0x89254F0`; all three clusters must be written together or the mirror rolls it back. FX30 and FX3 share the id space digit for digit; A6700 uses a shifted numbering and a different record layout (the parser does not carry over).
 
-**Conclusion so far:** the burst feature is not missing from FX30 — its firmware contains every related name, list entry and constant, its `.text` is actually 11,128 bytes *larger* than FX3's, and a symmetric instruction-level diff shows 19.41% vs 19.38% unique code (net 10,848 ≈ the size delta), i.e. a **function-level reshuffle**, not per-function rewrites. The remaining gate is runtime, and it can only be read by executing code inside the camera or by reading the `/setting` partition. See `docs/11`, `docs/12`, `docs/13`. No firmware binaries or device-unique data are included.
+**Conclusion so far:** the burst feature is not missing from FX30 — its firmware contains every related name, list entry and constant, its `.text` is actually 11,128 bytes *larger* than FX3's, and a symmetric instruction-level diff shows 19.41% vs 19.38% unique code (net 10,848 ≈ the size delta), i.e. a **function-level reshuffle**, not per-function rewrites. The gate is the drive-mode setting, and it can now be flipped from the USB side — no in-camera code execution needed. See `docs/11`, `docs/12`, `docs/13`. No firmware binaries or device-unique data are included.
 
 **Cross-check with upstream (2026-10-24):** the author of `xyzhangxin/sony-a6700-powerful` published their A6700 three-step sequence in Issue #2. Compared against FX30 6.00, the backbone matches **byte for byte** — same `pFunc=0x40` / `category=0x1001`, same `{area, file_id, transfer_mode}` payload prefix (`[0, 2, 0] + data`), and `0x4007 / file_id=2` writing `/tmp/jiritsu/libJit.so`. They cautioned that their loader path was only verified on A6700 2.00 and that FX30 needs separate confirmation, and that A6700 payloads must not be reused directly. Both points are now settled on our side: FX30 6.00 is **verified on-device** (`res=0`, and a self-written side-effect file read back proves the code ran), and we did not reuse their payload — we wrapped the stock `libssp.so` and later built a standalone 2,064-byte `.so` with zig. Two numbering details remain open: they describe `0x4010 / file_id=0` as a "reader configuration" and `0x4008 / file_id=0` as retrieving the result, whereas our disassembly of `get_jiritsu_area_filename()` maps slot 0 to `tmmc.jit` and we close the loop on slot 3 (`jit.log`); both may be the same thing under different names. Finally, their "260 sectors" (~133 KB) indicates access at the **block-device sector layer**, whereas this repository works at the filesystem and property-semantics layers — a difference in level, not a contradiction. See `docs/14-peer-crosscheck.md`.
 

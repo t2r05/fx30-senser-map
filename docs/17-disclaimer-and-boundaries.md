@@ -49,7 +49,14 @@
 | 🟢 **纯静态分析** | 不接触相机，只读本地固件镜像 | `tools/offline/` 全部、`tools/payload/check_so.py` |
 | 🔵 **只读探针** | 只向相机发送**读**请求，不改相机任何状态 | `probe_sony.ps1` / `scsi_probe.py` / `extcmd_probe.py` / `pmca_extcmd_check.py` / `senser_auth.py` / `jiritsu_probe.py` / `jiritsu_deep.py` / `jiritsu_deep2.py` / `jiritsu_pdt.py` / `probe_603_ns.py` / `mem_probe.py` / `term_probe.py` |
 | 🟡 **含写操作（需显式参数才触发）** | **默认只读**，只有传入特定参数才写相机 | `probe_fileid_map.py`（`--delete <file_id>` 发 `0x4009`/`0x4012` 删除 + `0x4002` 重挂；`--mount` 发 `0x4002` 重挂） |
+| 🟡 **含写操作（每次运行都写）** | **默认就会写相机的设置区**，写入前自动存完整快照 | `probe_drive_write.py`（写驱动模式：`0x8EF80` + `0x91690` 成对写入，回滚材料存于 `dump/drive_before.bin`） |
 | 🔴 **构建型（不接触相机）** | 只在主机上生成/校验 `.so` 载荷字节码，**不含下发脚本** | `tools/payload/build_payload.sh` |
+
+> 🟡 `probe_drive_write.py` 会改变相机的**拍摄模式**（可开启隐藏连拍模式）。
+> 每次运行前自动落一份完整回滚快照（`dump/drive_before.bin`），
+> 回滚命令：`python tools/probe_drive_write.py 0x8EF80=0x00 0x91690=0x00`。
+> **验证写操作必须拔电池 ≥30 秒做冷启动** —— 关机再开机是热重启，走
+> `nflasha5` 暖启动镜像恢复路径，会把改动吃掉。
 
 **明确不含**（有意不提供）：
 
@@ -57,6 +64,7 @@
 - ❌ 固件写入 / 刷写脚本
 - ❌ 绕过授权检查的密钥或证书
 - ❌ 任何固件二进制或备份数据文件
+- ❌ 写入固件分区（`nflasha*`）的脚本 —— 所有写操作只限于 `/setting` 设置区
 
 ---
 

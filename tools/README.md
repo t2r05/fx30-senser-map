@@ -15,10 +15,54 @@
 |---|---|---|
 | 🟢 纯静态 | `offline/*`、`payload/check_so.py` | 不接触相机，只读本地文件 |
 | 🔵 只读探针 | 除下列外全部脚本 | 只发送**读**请求，不改相机状态 |
-| 🟡 含写操作 | `probe_fileid_map.py` | **默认只读**；仅当传入 `--delete <file_id>` 或 `--mount` 时**会写相机** |
+| 🟡 含写操作 | `probe_fileid_map.py`、**`probe_drive_write.py`** | `probe_fileid_map.py` **默认只读**；仅当传入 `--delete <file_id>` 或 `--mount` 时**会写相机**。`probe_drive_write.py` **每次运行都会写设置区**（2.25 MB 全量写回） |
 
 ⚠️ `probe_fileid_map.py --delete <file_id>` 会依次尝试 `0x4009` / `0x4012` 删除 `/tmp/jiritsu` 下的文件，
 成功后自动发 `0x4002`(MOUNT) 重挂并读回验证。**该文件在相机 flash 分区里，跨重启保留**，用完务必清理。
+
+🟡 **`probe_drive_write.py` 会改相机的驱动模式**（写入设置区 `0x8EF80` / `0x91690`）。
+每次运行前自动落一份完整快照（`dump/drive_before.bin`）作为回滚材料。
+**只写一个字段会被固件回退**（模式是两个字段的组合），详见下方「驱动模式写入」一节。
+写入后**必须拔电池 ≥30 秒冷启动**才能验证 —— 关机再开机是热重启，走暖启动镜像恢复路径，会把改动吃掉。
+
+## 驱动模式写入（`probe_drive_write.py`）
+
+FX30 上**开启隐藏连拍模式**（2026-10-24 实机验证）：
+
+```bash
+python probe_drive_write.py 0x8EF80=0x01 0x91690=0x01
+# → 拔电池 ≥30 秒冷启动 → 相机进入连拍，能正常连拍（菜单不显示该选项，手动切换即掉回）
+```
+
+回滚单张：
+
+```bash
+python probe_drive_write.py 0x8EF80=0x00 0x91690=0x00
+```
+
+### 为什么是这两个字节、这两个值
+
+`0x8EF80` / `0x91690` 存的不是属性 id，而是**两张枚举表的 0-based 位置索引**：
+
+| 偏移 | 枚举表 | 表基 vaddr | `0x00` | `0x01` | `0x02` | `0x05` | `0x08` | `0x09` | `0x0C` |
+|---|---|---|---|---|---|---|---|---|---|
+| `0x8EF80` | `EXTERN_VAL_DRIVE_MODE_*` | `0x41A0550` | SINGLE | **BURST** | BRACKET | RAW_BURST | SINGLE_SELF_2S | BURST_SELF_10S | SINGLE_SELF_5S |
+| `0x91690` | `DRIVE_MODE_*` | `0x41A28F0` | 1_IMAGE_SHOOTING | **CONT_SHOOTING** | CONT_SHOOTING_LIMITED | SELF_TIMER | CONT_BRACKET | BRACKET_SINGLE | DRO_ADV_BRACKET |
+
+两字段是**同一设置的两层表示，必须成对写入**。只写一个，固件发现不一致会回退。
+
+| 偏移 | 固件内枚举表 vaddr | 项结构 |
+|---|---|---|
+| `0x8EF80` | `0x41A0550` | `{char* name; u32 id; u16 code}`，16 字节/项 |
+| `0x91690` | `0x41A28F0` | 同上 |
+
+**已知的坑**：
+
+- ⚠️ **关机 ≠ 冷启动**。热重启（关机再开机）走 `nflasha5` 暖启动镜像恢复，
+  改动会被吃掉 —— 判定必须**拔电池 ≥30 秒**。
+- ⚠️ **固件会话结束后相机会重枚举回 PTP**（PID `096F`），
+  下一次跑脚本要重新把 USB 模式切回「海量存储器」并插拔。
+- ⚠️ 写入前请确认电量 ≥ 50%，写失败时恢复出厂设置或写回 `dump/drive_before.bin`。
 
 ## 依赖
 
@@ -52,6 +96,7 @@ cd pmca-src && pip install -r requirements.txt
 | `probe_603_ns.py` | 🔵 | `0x603/1` 的 namespace 探测（确认该通道服务哪一族 id） |
 | `probe_fileid_map.py` | 🔵/🟡 | 逐槽 `GET_FILE`（`file_id 0..4`），核对 `get_jiritsu_area_filename()` 索引表；`0x4010` 需显式 `--allow-4010`；`--delete` / `--mount` 会写相机 |
 | `mem_probe.py` | 🔵 | 验证 MemoryDump（`0xff03`）通道 —— 在 FX30 上返回 128 |
+| `probe_drive_write.py` | 🟡 | **写入驱动模式**（`0x8EF80` / `0x91690` 成对写入），开启隐藏连拍；每次运行前自动存回滚快照 |
 | `term_probe.py` | 🔵 | 诊断服务模式终端端点 —— 在 FX30 上 `writeTerminal` 超时 |
 
 ## 运行示例
