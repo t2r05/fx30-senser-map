@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FX30 隐藏连拍 · 项目收尾与结论汇总（2026-10-25）</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#191c21; --ink2:#4b5158; --ink3:#7c838d;
+  --line:#e2e5ea; --ok:#0a7d4b; --okbg:#e7f6ef; --warn:#a86608; --warnbg:#fdf4e4;
+  --err:#b3261e; --errbg:#fdecea; --blue:#1a5fb4; --bluebg:#eaf1fb;
+  --purple:#6b3fa0; --purplebg:#f2ecfa; --code:#f2f4f7;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.72 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;}
+.wrap{max-width:1120px;margin:0 auto;padding:30px 22px 90px}
+header{background:linear-gradient(135deg,#0d3b2a 0%,#14487a 55%,#3a2a6b 100%);
+  color:#fff;border-radius:14px;padding:30px 34px;margin-bottom:24px}
+header h1{margin:0 0 10px;font-size:26px;letter-spacing:.3px;line-height:1.35}
+header .sub{opacity:.9;font-size:14px}
+header .badges{margin-top:16px;display:flex;flex-wrap:wrap;gap:9px}
+.badge{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);
+  border-radius:20px;padding:5px 14px;font-size:13px}
+h2{font-size:20px;margin:38px 0 14px;padding-left:12px;border-left:4px solid var(--blue)}
+h3{font-size:16px;margin:22px 0 10px;color:var(--ink)}
+h4{font-size:14px;margin:16px 0 8px;color:var(--ink2)}
+p{margin:9px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:20px 24px;margin:16px 0}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px;background:var(--card)}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+th{background:#eef1f5;font-weight:600;font-size:13px}
+tbody tr:nth-child(even){background:#fafbfc}
+code{background:var(--code);padding:1.5px 6px;border-radius:4px;font-size:12.5px;
+  font-family:"Cascadia Code",Consolas,monospace}
+pre{background:#1c2026;color:#e5e8ed;padding:15px 18px;border-radius:9px;overflow-x:auto;
+  font-family:"Cascadia Code",Consolas,monospace;font-size:12.5px;line-height:1.62}
+pre code{background:none;padding:0;color:inherit}
+.tag{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:600}
+.t-ok{background:var(--okbg);color:var(--ok)}
+.t-err{background:var(--errbg);color:var(--err)}
+.t-warn{background:var(--warnbg);color:var(--warn)}
+.t-blue{background:var(--bluebg);color:var(--blue)}
+.t-p{background:var(--purplebg);color:var(--purple)}
+.good{border-left:4px solid var(--ok);background:var(--okbg);padding:13px 17px;
+  border-radius:0 8px 8px 0;margin:14px 0}
+.bad{border-left:4px solid var(--err);background:var(--errbg);padding:13px 17px;
+  border-radius:0 8px 8px 0;margin:14px 0}
+.note{border-left:4px solid var(--warn);background:var(--warnbg);padding:13px 17px;
+  border-radius:0 8px 8px 0;margin:14px 0}
+.old{text-decoration:line-through;color:var(--ink3)}
+ul{margin:9px 0;padding-left:22px}
+li{margin:5px 0}
+.kv{display:flex;gap:12px;margin:6px 0;font-size:14px;flex-wrap:wrap}
+.kv b{min-width:130px;color:var(--ink2)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.big{font-size:16px;font-weight:600;line-height:1.6}
+footer{margin-top:46px;padding-top:20px;border-top:1px solid var(--line);
+  color:var(--ink3);font-size:12.5px}
+.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:18px 0}
+.toc ol{margin:6px 0;padding-left:22px;columns:2;column-gap:30px}
+.toc a{color:var(--ink2);text-decoration:none;font-size:13.5px}
+.toc a:hover{color:var(--blue)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>FX30 隐藏连拍 · 项目收尾与结论汇总</h1>
+  <div class="sub">2026-10-25 · 一夜完整记录：从「能否开启」到「为何菜单不显示」</div>
+  <div class="badges">
+    <span class="badge">✅ 连拍已永久开启</span>
+    <span class="badge">✅ 复现 3 次</span>
+    <span class="badge">✅ 无损可逆</span>
+    <span class="badge">⬜ 菜单显示未解决</span>
+  </div>
+</header>
+
+<div class="toc">
+  <b>目录</b>
+  <ol>
+    <li><a href="#s1">一句话结论</a></li>
+    <li><a href="#s2">连拍方案（配方与验证）</a></li>
+    <li><a href="#s3">底层机制</a></li>
+    <li><a href="#s4">持久性边界</a></li>
+    <li><a href="#s5">PDT 与固件结构</a></li>
+    <li><a href="#s6">菜单问题的五条探索路线</a></li>
+    <li><a href="#s7">已排除路径清单</a></li>
+    <li><a href="#s8">当前判断与下一步</a></li>
+    <li><a href="#s9">工具与资产</a></li>
+    <li><a href="#s10">教训清单</a></li>
+    <li><a href="#s11">风险与红线</a></li>
+  </ol>
+</div>
+
+<h2 id="s1">一、一句话结论</h2>
+<div class="card">
+  <p class="big">FX30 的隐藏连拍模式已经可以永久开启 —— 写设置区两个字节，拔电池冷启动一次即可。<br>
+  它是无损、可逆、近乎永久的；<b>唯一剩下的问题是不显示在菜单里</b>，因此无法在菜单中切换、也调不了速度档。</p>
+  <pre><code>python probe_drive_write.py --burst     # 开启连拍
+# → 拔电池 ≥30 秒冷启动 → 相机进入连拍，能正常连拍
+
+python probe_drive_write.py --single    # 回滚单张
+python probe_drive_write.py --probe     # 只看状态，不写</code></pre>
+</div>
+
+<h2 id="s2">二、连拍方案（配方与验证）</h2>
+
+<div class="card">
+<h3>2.1 配方</h3>
+<table>
+  <thead><tr><th>偏移</th><th>写入值</th><th>含义</th></tr></thead>
+  <tbody>
+    <tr><td><code>0x8EF80</code></td><td><code>0x01</code></td><td>EXTERN_VAL_DRIVE_MODE 表 idx1 = BURST（外层菜单枚举）</td></tr>
+    <tr><td><code>0x91690</code></td><td><code>0x01</code></td><td>DRIVE_MODE 表 idx1 = CONT_SHOOTING（内层驱动枚举）</td></tr>
+  </tbody>
+</table>
+<div class="good">
+<b>必须成对写入。</b>只写一个，固件发现不一致会回退 —— 这是本项目踩过的最大坑，
+早期「写了没生效」的负结论就是这么来的。
+</div>
+</div>
+
+<div class="card">
+<h3>2.2 三次独立复现（含失败与成功的直接对照）</h3>
+<table>
+  <thead><tr><th>#</th><th>时间</th><th>before</th><th>after</th><th>结果</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>21:43</td><td><code>08</code>/<code>05</code>（自拍定时2s）</td><td><code>01</code>/<code>01</code></td><td><span class="tag t-ok">✅ 冷启动进连拍</span></td></tr>
+    <tr><td>2</td><td>23:07</td><td><code>00</code>/<code>00</code></td><td><code>01</code>/<code>01</code></td><td><span class="tag t-ok">✅ 再次成功</span></td></tr>
+    <tr><td>3</td><td>23:16</td><td><code>00</code>/<code>00</code></td><td><code>01</code>/<code>01</code></td><td><span class="tag t-ok">✅ 成功</span></td></tr>
+    <tr><td>对照</td><td>—</td><td colspan="2">只写 <code>0x8EF80=0x08</code>，<code>0x91690</code> 留 <code>0x00</code></td><td><span class="tag t-err">❌ 相机仍单张</span></td></tr>
+  </tbody>
+</table>
+<p>唯一变量就是「第二个字段有没有跟上」⇒ 成对写入的必要性由直接 A/B 对照确证。</p>
+</div>
+
+<h2 id="s3">三、底层机制</h2>
+
+<div class="card">
+<h3>3.1 这两个偏移存的不是属性 id，而是枚举表位置索引</h3>
+<p>这是本项目最大的认知修正。固件 <code>.data.rel.ro</code> 有两张 16 字节/项的枚举表（<code>{char* name; u32 id; u16 code}</code>）：</p>
+<table>
+  <thead><tr><th>偏移</th><th>枚举表</th><th>表基 vaddr</th><th><code>0x00</code></th><th><code>0x01</code></th><th><code>0x02</code></th><th><code>0x05</code></th><th><code>0x08</code></th><th><code>0x0C</code></th></tr></thead>
+  <tbody>
+    <tr><td><code>0x8EF80</code></td><td>EXTERN_VAL_DRIVE_MODE_*</td><td><code>0x41A0550</code></td>
+      <td>SINGLE</td><td><b style="color:var(--ok)">BURST</b></td><td>BRACKET</td><td>RAW_BURST</td><td>SINGLE_SELF_2S</td><td>SINGLE_SELF_5S</td></tr>
+    <tr><td><code>0x91690</code></td><td>DRIVE_MODE_*</td><td><code>0x41A28F0</code></td>
+      <td>1_IMAGE_SHOOTING</td><td><b style="color:var(--ok)">CONT_SHOOTING</b></td><td>CONT_SHOOTING_LIMITED</td><td>SELF_TIMER</td><td>CONT_BRACKET</td><td>DRO_ADV_BRACKET</td></tr>
+  </tbody>
+</table>
+<p>验证强度：12 份带标签快照 100% 自洽；27 份全量快照取值集合（<code>0x8EF80</code> ∈ {0,1,2,8,12}，<code>0x91690</code> ∈ {0,5,9}）全部落在表索引范围内。</p>
+<div class="note">
+此前「连拍候选值是 <code>0x01</code>/<code>0x04</code>/<code>0x10</code>」是按 <b>id</b> 猜的；按 <b>索引</b> 就是 <code>0x01</code>。
+</div>
+</div>
+
+<h2 id="s4">四、持久性边界（全部实测）</h2>
+
+<div class="card">
+<table>
+  <thead><tr><th>阶段</th><th>操作</th><th>结果</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="2"><b>首次生效</b></td><td>关机再开机（热重启）</td><td><span class="tag t-err">❌ 不生效</span></td></tr>
+    <tr><td><b>拔电池 ≥30 秒冷启动</b></td><td><span class="tag t-ok">✅ 生效</span></td></tr>
+    <tr><td rowspan="4"><b>已生效后</b></td><td>关机再开机（热重启）</td><td><span class="tag t-ok">✅ 保持</span></td></tr>
+    <tr><td>拔电池冷启动</td><td><span class="tag t-ok">✅ 保持</span></td></tr>
+    <tr><td>进菜单浏览 / 切视频模式录视频</td><td><span class="tag t-ok">✅ 保持</span></td></tr>
+    <tr><td><b>手动修改驱动模式设置</b></td><td><span class="tag t-err">❌ 掉回单张</span></td></tr>
+  </tbody>
+</table>
+<div class="good">
+<b>一句话</b>：写入后需要<b>一次</b>冷启动让固件加载；加载之后热重启不会清除。<br>
+<b>只要不去手动改驱动模式设置，连拍近乎永久保持。</b>
+</div>
+<div class="note">
+掉回时固件会把 <code>0x8EF80</code> 和 <code>0x91690</code> <b>都写回 <code>0x00</code></b>（已由 <code>--probe</code> 快照确认）。
+掉了重新跑一次 <code>--burst</code> 即可。
+</div>
+</div>
+
+<h2 id="s5">五、PDT 与固件结构</h2>
+
+<div class="card">
+<h3>5.1 PDT 身份</h3>
+<table>
+  <tbody>
+    <tr><td>实际文件</td><td><code>/setting/Backup.bin</code>（CP/MP 芯片参数备份）</td></tr>
+    <tr><td>大小</td><td>2,253,564 字节</td></tr>
+    <tr><td>出厂副本</td><td>固件包 <code>0110_backup/SYSIPSX-DSLR/LAX/CX96700_ALLLANG.bin</code>，分毫不差</td></tr>
+    <tr><td>是否真值源</td><td><b>是</b>（已实机证明：写它 + 冷启动即改行为）</td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 四机型出厂备份（新发现的资产）</h3>
+<table>
+  <thead><tr><th>机型</th><th>大小</th><th><code>0x8EF80</code></th><th><code>0x91690</code></th><th>有连拍菜单</th></tr></thead>
+  <tbody>
+    <tr><td>FX30</td><td>2,253,564</td><td><code>0x00</code></td><td><code>0x00</code></td><td>❌</td></tr>
+    <tr><td>FX3</td><td>2,229,740</td><td><code>0x00</code></td><td><code>0x0C</code></td><td>✅</td></tr>
+    <tr><td>A6700</td><td>2,351,065</td><td><code>0x00</code></td><td><code>0x00</code></td><td>✅</td></tr>
+    <tr><td>A7C2</td><td>2,390,264</td><td><code>0x00</code></td><td><code>0x00</code></td><td>✅</td></tr>
+  </tbody>
+</table>
+
+<h3>5.3 FX30 ↔ FX3 的 PDT 位移 = <code>-560</code>（<code>-0x230</code>）</h3>
+<table>
+  <thead><tr><th>FX30 区段</th><th>delta</th><th>相同率</th></tr></thead>
+  <tbody>
+    <tr><td><code>0x8D000–0x8DFFF</code></td><td>-604</td><td>98.34%</td></tr>
+    <tr><td><code>0x8E000–0x8EFFF</code></td><td><b>-560</b></td><td>99.27%</td></tr>
+    <tr><td><code>0x8F000–0x8FFFF</code></td><td><b>-560</b></td><td><b>100.00%</b></td></tr>
+    <tr><td><code>0x90000–0x90FFF</code></td><td><b>-560</b></td><td><b>100.00%</b></td></tr>
+    <tr><td><code>0x91000–0x91FFF</code></td><td><b>-560</b></td><td>97.27%</td></tr>
+    <tr><td><code>0x92000–0x92FFF</code></td><td><b>-560</b></td><td><b>100.00%</b></td></tr>
+    <tr><td><code>0x93000–0x93FFF</code></td><td><b>-560</b></td><td>99.49%</td></tr>
+    <tr><td><code>0x99000–0x99FFF</code></td><td><b>-560</b></td><td><b>100.00%</b></td></tr>
+  </tbody>
+</table>
+<div class="bad">
+<b>修正一个我自己的错误判断</b>：此前用 <code>delta=0</code> 的相同率（66.5%/39.1%）判定「PDT 分段错位、无单一位移」——
+那是<b>没对齐</b>时的数字。对齐后是 97–100%。
+</div>
+
+<h3>5.4 <code>0x91690 = 0x0C</code> 谜团解开</h3>
+<table>
+  <thead><tr><th>读法</th><th>FX30</th><th>FX3</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>同偏移 <code>0x91690</code></td><td><code>0x00</code></td><td><b><code>0x0C</code></b></td><td>← 一直以为的"差异"</td></tr>
+    <tr><td><b>对齐后</b>（→FX3 <code>0x91460</code>）</td><td><code>0x00</code></td><td><code>0x00</code></td><td><b>两侧相同，无差异</b></td></tr>
+    <tr><td>反查 FX3 <code>0x91690</code> 的语义位置</td><td>FX30 <code>0x918C0</code> = <code>0x0C</code></td><td><code>0x0C</code></td><td>同一个 <code>0x0C</code>，位置不同</td></tr>
+  </tbody>
+</table>
+<p>⇒ <b>跨机型对比必须先对齐，同偏移 ≠ 同位置。</b></p>
+</div>
+
+<h2 id="s6">六、菜单问题的五条探索路线</h2>
+
+<div class="card">
+<h3>路线 1 · PDT 可变字段筛选 <span class="tag t-err">未走通</span></h3>
+<p>方法：m0/m1 双读一致性（噪声在 m0/m1 间必然不同）+ 三模式间有差异。<br>
+结果：PDT 里真正的「模式字段」只有 4 个（<code>0x8EF80</code>、<code>0x91690</code>、<code>0x99688/89</code>），<b>没有菜单列表</b>。</p>
+<div class="note"><b>方法论漏洞</b>：菜单显示列表是<b>常量</b>（三种模式下都一样），差分法筛不到常量字段。</div>
+
+<h3>路线 2 · PDT 常量字段搜索 <span class="tag t-err">未走通</span></h3>
+<p>条件：值域 ⊆ 0..16 的连续块 + 全快照恒定。<br>
+结果：宽条件 122,503 个候选，严条件仍 118 个，<b>判据不足，无法收敛</b>。</p>
+
+<h3>路线 3 · 固件侧菜单构造代码 <span class="tag t-err">未走通</span></h3>
+<p>在 <code>0x015BFB44</code> 找到菜单项构造代码（<code>mov w0,#0xc30..0xc33</code> + 字符串 <code>adrp #0x2faf000 + 0x373/0x395/0x3b7/0x3d9</code>），
+但 dump 字符串后发现是 <code>CMD_MULTI_FLASH_COMP_ALL_PLUS_2_5</code>（<b>闪光灯补偿</b>），不是驱动模式。</p>
+<div class="note"><b>教训</b>：属性 id 空间在不同上下文会复用 —— <code>0x0C30</code> 在 BKID 表是 <code>registration_drive_mode0</code>，此处却配闪光灯补偿。不能只看 id 数字认定语义。</div>
+
+<h3>路线 4 · 跨机型出厂备份对比 <span class="tag t-ok">对齐成功</span></h3>
+<p>用 <code>-560</code> 对齐后，142 个差异字节 / 37 个字段。其中 <b>84 字节构成 12 个「7 字节等值组」</b>：</p>
+<table>
+  <thead><tr><th>FX30 偏移</th><th>长度</th><th>FX30</th><th>FX3（对齐）</th><th>方向</th></tr></thead>
+  <tbody>
+    <tr><td><b><code>0x91700–0x9170D</code></b></td><td>14</td><td><code>00</code>×14</td><td><b><code>01</code>×14</b></td><td>FX3 有 0x01</td></tr>
+    <tr><td><b><code>0x918B9–0x918BF</code></b></td><td>7</td><td><code>00</code>×7</td><td><b><code>01</code>×7</b></td><td>FX3 有 0x01</td></tr>
+    <tr><td><b><code>0x91E90–0x91E96</code></b></td><td>7</td><td><code>00</code>×7</td><td><b><code>01</code>×7</b></td><td>FX3 有 0x01</td></tr>
+    <tr><td><code>0x91754–0x9175A</code></td><td>7</td><td><code>00</code>×7</td><td><code>03</code>×7</td><td>FX3 有 0x03</td></tr>
+    <tr><td><code>0x91715–0x91729</code></td><td>21</td><td>{01×7,02×7,01×7}</td><td>{00×7,01×7,00×7}</td><td>逐组 −1</td></tr>
+    <tr><td><code>0x91840–0x91846</code></td><td>7</td><td><code>02</code>×7</td><td><code>01</code>×7</td><td>逐组 −1</td></tr>
+    <tr><td><code>0x915FC</code> / <code>0x917DE</code> / <code>0x9195A</code></td><td>各 7</td><td><code>01</code>×7</td><td><code>00</code>×7</td><td>反向</td></tr>
+    <tr><td><code>0x8ED99–0x8EDA2</code></td><td>10</td><td>{4,4,4,2,3,3,3,4,4,4}</td><td>逐项 +3</td><td>整体平移</td></tr>
+  </tbody>
+</table>
+<p>35 份快照中 140/142 个候选差异字节<b>全恒定</b>（静态能力表，非用户设置）。</p>
+<div class="note">
+<b>疑点</b>：三组最强候选都是「FX30 全 0 / FX3 全 1」，不是混合值。
+若真是「7 个模式的可见性」，则 FX30 连单张都不可见 —— 与事实矛盾。
+⇒ 形状像 ≠ 就是它。
+</div>
+
+<h3>路线 5 · B 方案：载荷注入 + <code>.bss</code> 读写 <span class="tag t-p">首次打通</span></h3>
+<p class="big">这是今晚技术上最大的突破：<b>载荷与 appFw 跑在同一进程，直接读写它的内存。</b></p>
+
+<h4>5.1 载荷所在进程</h4>
+<pre><code>cmdline = /usr/bin/im.elf debug s g r u l i a lazy-global</code></pre>
+<p>完整 maps（82,898 字节 / 1,094 条映射）显示 appFw.so 确实在该进程：</p>
+<pre><code>7f40544000-7f44258000 r-xp  /usr/lib/appFw.so   ← 加载基址
+7f44267000-7f44d14000 r--p  /usr/lib/appFw.so
+7f44d14000-7f450b3000 rw-p  /usr/lib/appFw.so
+7f450b3000-7f4a30e000 rw-p  (匿名, .bss 主体 82.4 MB)</code></pre>
+<p><b>无 ASLR</b>：两次拔插后基址都是 <code>0x7F40544000</code>，地址可稳定复用。</p>
+
+<h4>5.2 读取靶点成功（版本裁决实质通过）</h4>
+<table>
+  <thead><tr><th>vaddr</th><th>运行时</th><th>读到的值</th><th>含义</th></tr></thead>
+  <tbody>
+    <tr><td><code>0x8230D78</code></td><td><code>0x7F48774D78</code></td><td>0</td><td>0x02AF 菜单项主值</td></tr>
+    <tr><td><code>0x8220844</code></td><td><code>0x7F48764844</code></td><td>0</td><td>启用标志 A</td></tr>
+    <tr><td><b><code>0x83461A4</code></b></td><td><code>0x7F48778BA4</code></td><td><b>6</b></td><td>available0 = <code>0b110</code></td></tr>
+    <tr><td><code>0x83461A8</code></td><td>—</td><td><b>7</b></td><td>available1 = <code>0b111</code></td></tr>
+    <tr><td><code>0x83461AC</code></td><td>—</td><td><b>4</b></td><td>available2 = <code>0b100</code></td></tr>
+    <tr><td><code>0x831F82C</code></td><td>—</td><td><b>7</b></td><td>0x04B8 连拍本体</td></tr>
+    <tr><td><code>0x8230A14</code></td><td>—</td><td>0</td><td>0x0272 单张主值</td></tr>
+    <tr><td><code>0x8230A24</code></td><td>—</td><td>0</td><td>0x0273 连拍主值</td></tr>
+  </tbody>
+</table>
+
+<h4>5.3 🔑 关键发现：<code>available0 = 6</code> —— 连拍早已被允许</h4>
+<table>
+  <thead><tr><th>bit</th><th>EXTERN_VAL_DRIVE_MODE</th><th>状态</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>SINGLE</td><td>0</td></tr>
+    <tr><td><b>1</b></td><td><b>BURST（连拍）</b></td><td><b style="color:var(--ok)">1 ← 已允许</b></td></tr>
+    <tr><td><b>2</b></td><td><b>BRACKET（包围）</b></td><td><b style="color:var(--ok)">1</b></td></tr>
+    <tr><td>3–16</td><td>REMOTE / SPEED_PRIOR_BURST / RAW_BURST / 各种 SELF / BOL / SPOT</td><td>0</td></tr>
+  </tbody>
+</table>
+<div class="good">
+<b>这一下把问题定位收窄了：</b>
+<table style="margin:10px 0">
+  <tbody>
+    <tr><td>能力层（available 位图）</td><td><span class="tag t-ok">✅ BURST 已允许</span></td></tr>
+    <tr><td>固件门控（驱动模式字段）</td><td><span class="tag t-ok">✅ 已绕过（写 PDT）</span></td></tr>
+    <tr><td><b>UI 层（菜单渲染）</b></td><td><span class="tag t-err">❌ 不显示 ← 真正的瓶颈</span></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>5.4 写入测试：<code>0x8220844/845</code> 无效</h4>
+<p>写入 <code>0x8220844=1</code>、<code>0x8220845=1</code> → 读回 <code>01 01</code> 确认生效、相机未崩溃，
+但<b>用户反馈菜单无变化</b>（退出菜单重进也无变化）。</p>
+<div class="bad">
+⇒ <code>0x8220844/845</code> <b>不是菜单可见性开关</b>，该靶点排除。
+</div>
+</div>
+
+<h2 id="s7">七、已排除路径清单</h2>
+
+<div class="card">
+<table>
+  <thead><tr><th>路径</th><th>为什么排除</th></tr></thead>
+  <tbody>
+    <tr><td><code>0x603/1</code> 读 BKID id</td><td><code>cat=0x0603/cmd=1</code> 下 BKID 族全部 <code>res=129</code></td></tr>
+    <tr><td>「0x603 payload 首字节是 namespace」</td><td><code>cat=0x1001/cmd=0x603</code> 对任何 id 都返回固定 <code>01 02 00 10</code>，是 ack 不是属性值 ⇒ 伪命题</td></tr>
+    <tr><td>只写 <code>0x8EF80</code> 单个字段</td><td>固件回退，相机仍单张</td></tr>
+    <tr><td>热重启验证写入</td><td>首次生效不加载，必须冷启动</td></tr>
+    <tr><td><code>0x08DC14</code> / <code>0x07A640</code> 当模式字段</td><td>同一模式下有 9 个不同取值，是运行时噪声</td></tr>
+    <tr><td>zig 编译的 <code>.so</code> 载荷</td><td><code>dlopen</code> 返回 0 但 constructor 不执行（<code>stage1</code> 与 <code>probe_maps</code> 都失败）⇒ 只能用 libssp 借壳</td></tr>
+    <tr><td>PDT 单一位移对比（未对齐）</td><td><code>delta=0</code> 相同率 66.5%/39.1% 是未对齐数字，对齐后 97–100%</td></tr>
+    <tr><td>同偏移读跨机型</td><td><code>0x91690=0x0C</code> 是对齐假象</td></tr>
+    <tr><td><code>0x015BFB44</code> 菜单构造代码</td><td>配的是闪光灯补偿字符串</td></tr>
+    <tr><td>PDT 常量搜索（值域 0..16）</td><td>122,503 → 118 个候选，判据不足</td></tr>
+    <tr><td><b><code>0x8220844</code> / <code>0x8220845</code></b></td><td><b>写 1 后菜单无变化，已实测排除</b></td></tr>
+    <tr><td>写 <code>available*</code> 让菜单显示</td><td><code>available0</code> 的 BURST 位<b>本来就是 1</b> —— 它已放行，不是瓶颈</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="s8">八、当前判断与下一步</h2>
+
+<div class="card">
+<h3>8.1 我的判断</h3>
+<div class="note">
+<p><b>「可用」≠「显示」。</b>连拍在 <code>available0</code> 和 <code>available1</code> 两处都标记为可用，
+但菜单不显示；写启用标志也无效。</p>
+<p>⇒ 菜单列表很可能是<b>静态硬编码</b>的（在 <code>.rodata</code> 或 <code>.uxc</code> 资源里），
+不随 <code>.bss</code> 变化。<b>如果是这样，改运行时内存永远没用 —— 不管写哪个字段。</b></p>
+</div>
+
+<h3>8.2 下一步（两条线）</h3>
+<table>
+  <thead><tr><th>线</th><th>内容</th><th>可行性</th></tr></thead>
+  <tbody>
+    <tr><td><b>A · 静态菜单列表</b></td><td>找 UI 的菜单定义：<code>appFw.so</code> 的 <code>.rodata</code>，或 <code>share/app/*.uxc</code>（50 MB UI 资源）。目标是找到「驱动模式菜单项列表」并确认是否含连拍</td><td><span class="tag t-blue">纯离线，已派给 TRAE（第五期任务 4）</span></td></tr>
+    <tr><td><b>B · 跨机型普查</b></td><td>把 3 个「7 字节组」在 A6700 / A7C2 上普查。若它们也是 <code>01</code> ⇒ 支持「能力位」假设，可直接写 PDT 验证</td><td><span class="tag t-blue">纯离线，已派给 TRAE（第五期任务 1）</span></td></tr>
+  </tbody>
+</table>
+
+<h3>8.3 如果继续 B 方案（改内存）</h3>
+<p>还有两条未试的靶点，但<b>优先级低于上面两条</b>：</p>
+<ul>
+  <li>扫描 <code>.bss</code> 里 <code>available</code> 附近区域，找形如 <code>{0,1,2,8}</code> 的模式索引数组</li>
+  <li>读 <code>/dev/stream2</code>（64 MB 共享内存，appFw ↔ im.elf 的 IPC 通道），看菜单数据是否经它传递</li>
+</ul>
+<div class="note">
+<b>关键未验证风险</b>：菜单是否<b>启动时缓存</b>。若缓存，运行时改 <code>.bss</code> 永远看不到效果，
+必须在数据被读取之前写入 —— 那要改注入时机，难度显著上升。
+（用户已试「退出菜单再进」，无变化，倾向于「缓存」或「靶点不对」。）
+</div>
+</div>
+
+<h2 id="s9">九、工具与资产</h2>
+
+<div class="card">
+<h3>9.1 连拍操作</h3>
+<table>
+  <thead><tr><th>命令</th><th>作用</th></tr></thead>
+  <tbody>
+    <tr><td><code>python probe_drive_write.py --burst</code></td><td>开启连拍</td></tr>
+    <tr><td><code>python probe_drive_write.py --single</code></td><td>回滚单张</td></tr>
+    <tr><td><code>python probe_drive_write.py --probe</code></td><td>只看状态，不写</td></tr>
+    <tr><td><code>python probe_menu_flags.py --apply / --revert</code></td><td>试验 3 个「7 字节组」候选（PDT 侧，未验证）</td></tr>
+  </tbody>
+</table>
+
+<h3>9.2 载荷注入与内存读写</h3>
+<table>
+  <thead><tr><th>命令</th><th>作用</th></tr></thead>
+  <tbody>
+    <tr><td><code>patch_libssp.py --mode=cmdline</code></td><td>载荷：读 <code>/proc/self/cmdline</code>（判进程身份）</td></tr>
+    <tr><td><code>patch_libssp.py --mode=mapsloop</code></td><td>载荷：<b>循环读</b>完整 <code>/proc/self/maps</code>（单次 read 会截断！）</td></tr>
+    <tr><td><code>patch_libssp.py --mode=read:0xBASE</code></td><td>载荷：读 4 个 <code>.bss</code> 靶点</td></tr>
+    <tr><td><code>patch_libssp.py --mode=write:0xBASE</code></td><td>载荷：写 2 个字节 + 读回验证</td></tr>
+    <tr><td><code>probe_cmdline.py</code></td><td>一次会话完成「清日志 → 下发 → 读回」；<code>NO_STOP=1</code> 保持会话</td></tr>
+  </tbody>
+</table>
+<p>环境变量：<code>PL=载荷.so</code>、<code>OUTF=输出文件名</code>、<code>NO_STOP=1</code></p>
+
+<h3>9.3 文档索引</h3>
+<table>
+  <thead><tr><th>文件</th><th>内容</th></tr></thead>
+  <tbody>
+    <tr><td><code>FX30-连拍复现实操手册.md</code></td><td>给他人照着做的完整手册（含全部环境坑）</td></tr>
+    <tr><td><code>audit/11-驱动模式写入成功-枚举索引映射.md</code></td><td>枚举索引推导</td></tr>
+    <tr><td><code>audit/12-交叉验证与问题裁决.md</code></td><td>与外部会话的结论裁决</td></tr>
+    <tr><td><code>audit/13-持久化实测矩阵.md</code></td><td>持久性全矩阵</td></tr>
+    <tr><td><code>audit/14-离机分析-菜单可见性不可达.md</code></td><td>离机方案不可行的证明</td></tr>
+    <tr><td><code>audit/15-菜单显示栏定位-四路尝试.md</code></td><td>四条路线与失败原因</td></tr>
+    <tr><td><code>audit/16-FX30-FX3-PDT对齐结果.md</code></td><td><code>-560</code> 对齐与 7 字节组</td></tr>
+    <tr><td><code>audit/TRAE-PACK-4.md</code> / <code>-5.md</code></td><td>外部执行方任务包</td></tr>
+    <tr><td><code>oss/</code></td><td>开源库（已推送 GitHub）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="s10">十、教训清单（本项目累积）</h2>
+
+<div class="card">
+<table>
+  <thead><tr><th>#</th><th>教训</th></tr></thead>
+  <tbody>
+    <tr><td>#37</td><td><b>负结论下得太快</b>（触发 4 次：单写字段 / 热重启 / 差分筛常量 / 未对齐比相同率）</td></tr>
+    <tr><td>#41</td><td>并行会话操作同一硬件 = 不可控变量</td></tr>
+    <tr><td>#42</td><td>一次巧合的 <code>+1</code> 不是规律，规律要 ≥3 次重复</td></tr>
+    <tr><td>#43</td><td>多因素并存时必须单因子对照才能定因果</td></tr>
+    <tr><td>#44</td><td>安全提示要精确，不能宁严勿宽（过度警告会误导使用者）</td></tr>
+    <tr><td>#45</td><td>属性 id 空间在不同上下文会复用，不能只看数字</td></tr>
+    <tr><td>#46</td><td>差分法筛不到常量字段（下「不存在」结论前先确认目标会不会变）</td></tr>
+    <tr><td>#47</td><td>值域筛选不是判据，「符合形态」≠「就是它」</td></tr>
+    <tr><td>#48</td><td>「同偏移读」≠「同一位置」，跨机型对比必须先对齐</td></tr>
+    <tr><td>#49</td><td>形状像 ≠ 就是它（须实机验证才能定性）</td></tr>
+    <tr><td>#50</td><td>手写机器码时指令索引必须逐条数，反汇编校验是唯一可靠的发现手段</td></tr>
+    <tr><td>#51</td><td><code>/proc</code> 文件必须循环 read 到返回 ≤0（单次 read 会短读）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="s11">十一、风险与红线</h2>
+
+<div class="card">
+<h3>11.1 写入风险分级</h3>
+<table>
+  <thead><tr><th>操作</th><th>风险</th><th>可逆性</th></tr></thead>
+  <tbody>
+    <tr><td>写 PDT <code>0x8EF80</code>/<code>0x91690</code></td><td><span class="tag t-ok">低</span></td><td>✅ <code>--single</code> 一键回滚，快照齐备</td></tr>
+    <tr><td>写 PDT 未知字段（<code>0x91700</code> 等）</td><td><span class="tag t-warn">中</span></td><td>✅ 快照回滚 / 恢复出厂</td></tr>
+    <tr><td>写 <code>.bss</code>（内存）</td><td><span class="tag t-warn">中</span></td><td>✅ <b>重启即恢复</b>（不持久，风险天然可控）</td></tr>
+    <tr><td>改固件</td><td><span class="tag t-err">高</span></td><td>❌ 项目红线，不做</td></tr>
+  </tbody>
+</table>
+
+<h3>11.2 红线（保持）</h3>
+<ul>
+  <li>❌ 不发 <code>0x4003</code>(FORMAT) / <code>0x4006</code>(FIRMUP)</li>
+  <li>❌ 不改固件分区（只写 <code>/setting</code> 设置区 / <code>stdout</code> 日志）</li>
+  <li>❌ 不手写 <code>0x08DC14</code> / <code>0x07A640</code> / <code>0x6E9DC</code>（运行时噪声）</li>
+  <li>❌ 两个会话不同时操作同一台相机</li>
+  <li>✅ 每次写 PDT 前自动存完整快照（2.25 MB，带时间戳，永不覆盖）</li>
+  <li>✅ 出错先停，不盲目重试写入</li>
+</ul>
+
+<h3>11.3 操作要点</h3>
+<table>
+  <tbody>
+    <tr><td>首次生效</td><td><b>必须拔电池 ≥30 秒冷启动</b>（热重启不加载）</td></tr>
+    <tr><td>验证 .bss 写入</td><td><b>绝不能重启</b>（重启即丢，什么都看不到）</td></tr>
+    <tr><td>SDK 环境</td><td><code>PATH</code> 必须前置 <code>tools/pmca-src</code>（否则 pyusb 枚举出幽灵设备）</td></tr>
+    <tr><td>相机模式</td><td>USB = 海量存储器；<code>054C:0E0E</code> 与 <code>054C:0336</code> 都要装 libusbK</td></tr>
+  </tbody>
+</table>
+</div>
+
+<footer>
+非官方项目，与 Sony Corporation 无任何关联。固件逆向与设备修改存在变砖风险，可能使设备失去保修。<br>
+请只在自有设备上操作。本文所有地址、命令号、结构偏移均为逆向分析结果，非 Sony 官方文档，请以实机验证为准。<br>
+生成时间：2026-10-25 01:30 · 相机当前状态：连拍模式（<code>0x8EF80=0x01</code> / <code>0x91690=0x01</code>）
+</footer>
+
+</div>
+</body>
+</html>
