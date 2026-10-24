@@ -1,0 +1,7 @@
+# 统一换行符：脚本必须 LF，否则在 Linux/macOS 上执行会报 bad interpreter
+* text=auto
+
+*.sh    text eol=lf
+*.py    text eol=lf
+*.c     text eol=lf
+*.md    text eol=lf

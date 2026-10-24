@@ -91,15 +91,36 @@ USB MSC → Senser 两阶段认证 → 重枚举 054C:0336 → 服务身份认�
 
 > `file_id = 2 → libJit.so` 与 A6700 项目 `packet_builder.py` 的 `file_id = 2` 完全一致 —— 跨机型互证。
 
-### 3.3 ⚠️ 用完必须删
+### 3.3 ⚠️ 用完必须删（且删完要重挂）
 
 `/tmp/jiritsu` 是 `/dev/nflasha6`（`nflasha6 = Jiritsu`，25 MB **flash 分区**）的真实挂载点，
 **写入的文件跨重启保留，并会被固件反复 dlopen**。测试载荷用完必须用
 `FILE_DELETE`（`0x4009` / `0x4012`）删除并读回确认。
 
+> **2026-10-24 补充（来自 ZV-E10 同族实践）**：
+> 删掉 `libJit.so` 会让 Jiritsu **卸载整个 nflasha6**，此后读 `/tmp/jiritsu` 返回 **130**。
+> **130 表示「分区已卸载」，不是「文件不存在」** —— 本项目早期判断错了方向。
+> 恢复办法：发 `0x4002`(MOUNT) 重新挂载，之后读写正常。
+>
+> 所以清理动作的正确顺序是：
+> `FILE_DELETE` 删除 → 读回（此时可能 130）→ `0x4002` 重挂 → 再读回确认目录已空。
+
 配套只读探测脚本：
 - `fx30_hack/probe_jiritsu_1001.py` — 只发空 payload
 - `fx30_hack/probe_fileid_map.py` — 逐槽 `GET_FILE` 读回，核对上面的槽位表
+
+### 3.4 槽位表的第三方独立印证
+
+ZV-E10 的清理脚本把下列路径硬编码为「**固件文件，永不删除**」：
+
+```
+tmmc.jit    DIAC.csv    jit.log    history.txt    ver.txt
+```
+
+对照上面解出的索引表：`file_id=0 → tmmc.jit`、`file_id=3 → jit.log` —— **完全对上**，
+并补全了本表未知的 `DIAC.csv` / `history.txt` / `ver.txt` 三个固件文件。
+
+这也回答了一个悬而未决的问题：`tmmc.jit` 本来就是固件自带文件，**不该被当作「结果槽」**。
 
 ---
 

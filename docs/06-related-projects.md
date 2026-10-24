@@ -9,20 +9,37 @@
 
 | # | 项目名 | 仓库 | 类别 | 一句话定位 |
 |---|--------|------|------|-----------|
-| 1 | **Powerful6700** | [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) | 主线 · A6700 | A6700 功能解锁（USB 直连 + Pico 双路线） |
-| 2 | **A7C2-FL23 / A7C2 Tools** | [QAQLeonard/a7c2-fl23-research](https://github.com/QAQLeonard/a7c2-fl23-research) | 主线 · A7C II | 创意外观 / 快门声 / 竖屏工具（v3.0.0） |
-| 3 | **a7c2-service-preload** | [YuuLuo/a7c2-service-preload](https://github.com/YuuLuo/a7c2-service-preload) | 上游 · 机理 | A7C II 服务模式预加载与代码执行链路 |
-| 4 | **ILCE-7M4-RE** | [DavidBuchanan314/ILCE-7M4-RE](https://github.com/DavidBuchanan314/ILCE-7M4-RE) | 上游 · 逆向 | A7M4 逆向笔记（bootrom / serial boot） |
-| 5 | **Sony-PMCA-RE** | [ma1co/Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE) | 上游 · 基础库 | Sony 服务协议基础实现（Senser / print_backup / fwtool） |
-| 6 | **FireHydrant** | [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) | 相关 · 方法论 | A6700 内存访问方法 + 改动分层验证框架（纯文档，无地址/代码） |
-| 7 | **Recipe Lab** | [voxivoid/recipe-lab-sony-pmca](https://github.com/voxivoid/recipe-lab-sony-pmca) | 相关 · 生态 | 基于 PMCA 的创意外观 App |
+| 1 | **ZVE-10-Camtool** ⭐ | [nolan2628/Sony-ZVE-10-Camtool](https://github.com/nolan2628/Sony-ZVE-10-Camtool) | 方法 · 第三方机型 | ZV-E10 服务模式工具箱：Jiritsu dlopen 载荷 + 远程 shell + 整分区备份（**载荷 ELF 铁律出处**） |
+| 2 | **Powerful6700** | [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) | 主线 · A6700 | A6700 功能解锁（USB 直连 + Pico 双路线），v0.2.0 |
+| 3 | **Powerful6700-Windows** | [wanghm105/Powerful6700-Windows](https://github.com/wanghm105/Powerful6700-Windows) | 主线 · 移植 | 上述项目的 Windows 版（GPL-3.0，PySide6） |
+| 4 | **A7C2-FL23 / A7C2 Tools** | [QAQLeonard/a7c2-fl23-research](https://github.com/QAQLeonard/a7c2-fl23-research) | 主线 · A7C II | 创意外观 / 快门声 / 竖屏工具（v3.0.3） |
+| 5 | **a7c2-service-preload** | [YuuLuo/a7c2-service-preload](https://github.com/YuuLuo/a7c2-service-preload) | 上游 · 机理 | A7C II 服务模式预加载与代码执行链路 |
+| 6 | **a7c2-camera-tools** | [YuuLuo/a7c2-camera-tools](https://github.com/YuuLuo/a7c2-camera-tools) | 上游 · 工具 | 同作者第二仓库：2.00 包构建器 + CP 色表校验 |
+| 7 | **a7c2-qemu** | [chocotan/a7c2-qemu](https://github.com/chocotan/a7c2-qemu) | 上游 · 模拟 | **QEMU 跑原厂固件**，已进拍摄主界面与菜单 |
+| 8 | **PMCA-RE RELOADED** | [masterflai/pmca-re-reloaded](https://github.com/masterflai/pmca-re-reloaded) | 上游 · 重写 | PMCA-RE 的 Rust 重写，含相机设置内存模块 |
+| 9 | **ILCE-7M4-RE** | [DavidBuchanan314/ILCE-7M4-RE](https://github.com/DavidBuchanan314/ILCE-7M4-RE) | 上游 · 逆向 | A7M4 逆向笔记（bootrom / serial boot） |
+| 10 | **Sony-PMCA-RE** | [ma1co/Sony-PMCA-RE](https://github.com/ma1co/Sony-PMCA-RE) | 上游 · 基础库 | Sony 服务协议基础实现（Senser / print_backup / fwtool） |
+| 11 | **FireHydrant** | [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) | 相关 · 方法论 | A6700 内存访问方法 + 改动分层验证框架（纯文档，无地址/代码） |
+| 12 | **A7C2 深挖笔记** | [wu-hongjun/A7C2](https://github.com/wu-hongjun/A7C2) | 相关 · 笔记 | AP 选择器 / CP 校正表 / 6 个 ST 自定义槽 |
+| 13 | **a7c2-lut-photo-research** | [taoking/a7c2-lut-photo-research](https://github.com/taoking/a7c2-lut-photo-research) | 相关 · 研究 | 机外 LUT 工具 + 只读固件研究 |
+| 14 | **sony-a7c2-fl23-linux** | [nimrc/sony-a7c2-fl23-linux](https://github.com/nimrc/sony-a7c2-fl23-linux) | 相关 · 移植 | A7C2 工具的 Linux 一键脚本 |
+| 15 | **a7c2-fuji-ai-skill** | [FlyMercurian/a7c2-fuji-ai-skill](https://github.com/FlyMercurian/a7c2-fuji-ai-skill) | 相关 · 包装 | 把 A7C2 工具包装成 AI skill |
+| 16 | **Recipe Lab** | [voxivoid/recipe-lab-sony-pmca](https://github.com/voxivoid/recipe-lab-sony-pmca) | 相关 · 生态 | 基于 PMCA 的创意外观 App |
+
+> 盘点口径：**核心相关 16 个**（服务模式 / 固件逆向 / 功能解锁）。PMCA App 生态与 PTP 控制类项目不入表。
+> A7C2 生态已分裂出 8 个衍生仓库（#4 #5 #6 #7 #12 #13 #14 #15），多为 FL2/FL3 移植与再包装，**对驱动模式无新增信息**。
 
 ## 说明
 
 ### 主线（同代机型的可用成品）
 
-- **Powerful6700**（A6700 2.00，0.1.0.dev33 测试版）：当前版本**普通 USB 直连、无需 Pico**，勾选解锁 + **冷重载**（关机 → 拔电池 → 等 10s → 插电池 → 开机）生效；开放 FTP / 关机快门帘 / 灵活曝光 / 电子快门声。仓库另保留 **Pico 路线**（冷启动引导 → Fastboot → 读已知范围备份）。
-- **A7C2-FL23 / A7C2 Tools**（A7C II 2.01，v3.0.0）：经 USB 服务模式写入固件程序与设置，同样需**冷重载**；基于 Sony-PMCA-RE + `fwtool.py` + a7c2-service-preload。
+- **Powerful6700**（A6700 2.00，v0.2.0）：当前版本**普通 USB 直连、无需 Pico**，勾选解锁 + **冷重载**（关机 → 拔电池 → 等 10s → 插电池 → 开机）生效；开放 FTP / 关机快门帘 / 灵活曝光 / 电子快门声。仓库另保留 **Pico 路线**（冷启动引导 → Fastboot → 读已知范围备份）。v0.2.0 修 USB 连接，Windows 版另有「稀疏功能状态备份与恢复」。
+- **A7C2-FL23 / A7C2 Tools**（A7C II 2.01，v3.0.3）：经 USB 服务模式写入固件程序与设置，同样需**冷重载**；基于 Sony-PMCA-RE + `fwtool.py` + a7c2-service-preload。
+
+### ZVE-10-Camtool（跨机型方法参照，2026-10-18）
+
+第三方机型的完整服务模式工具箱，证明了 **Jiritsu dlopen 不是 A6700/A7C2 独有**。它给出的载荷 ELF 铁律是本项目 10-24 修正构建参数的直接依据，详见 `docs/15-payload-elf-rules.md`。
+
 
 ### 上游（上述项目所依赖 / 借鉴）
 

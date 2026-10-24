@@ -51,6 +51,10 @@ FX30 的服务模式**纯软件可达**（一根 Type-C + libusbK 双设备驱�
 | 连拍对应的模式值 | ⬜ 未确定 | 04 §13 |
 | 三处 `.bss` 副本的同步写顺序 | ⬜ 待验证 | 12 §4 |
 | 连拍补丁（16 处 `00→01`） | ❌ 已撤回（假阳性） | 08 顶部警告 |
+| **dlopen 载荷的最小合法 ELF 结构** | ✅ **五条铁律 + 2,064 B 参考产物** | [15](docs/15-payload-elf-rules.md) |
+| **`file_id` 槽位表（第三方独立印证）** | ✅ 已互证（0/3 号槽确认） | [15](docs/15-payload-elf-rules.md)、06 §3.3 |
+| `PT_GNU_RELRO` 是否应存在 | ✅ **应去掉**（会 mprotect 掉 `.dynamic` 同页） | [15 §一](docs/15-payload-elf-rules.md) |
+| `0xff01` 三机型行为不一致 | ⬜ **未解**（FX30 = 128，ZV-E10 可用） | [04 §20](docs/04-dead-ends.md) |
 
 ---
 
@@ -417,6 +421,49 @@ struct prop_record { uint64_t id; void *attach; void *stub[8]; uint64_t meta; };
 
 ---
 
+## 进展补充（2026-10-24 · 五）：载荷 ELF 结构规则，靠第三方机型补齐
+
+盘点了全生态 16 个核心相关项目后，找到一份比 A6700 那条线更有价值的技术参照：
+[`nolan2628/Sony-ZVE-10-Camtool`](https://github.com/nolan2628/Sony-ZVE-10-Camtool)（ZV-E10，11★）。
+
+它证明 **Jiritsu dlopen 不是 A6700/A7C2 独有** —— 入门机型同样能跑通，而且拿到了完整 shell
+（440 B 载荷 `fork` → `execve("/bin/sh", run.sh)`）与 root 全权限（`Uid: 0 0 0 0`、`CapEff: ffffffffffffffff`）。
+
+### 对本案产物的直接影响
+
+对方公布的载荷 ELF 铁律里有一条命中本仓库产物：**不要带 `PT_GNU_RELRO`**。
+
+默认链接会给 RW 段加 `PT_GNU_RELRO`，而 `_dl_protect_relro` 是按页 `mprotect` 的 ——
+`.dynamic` 与 `.bss` 同一页，整页变只读。纯函数载荷（全栈变量）不踩；**一旦用任何全局缓冲区就必崩**。
+
+| 指标 | 修正前 | 修正后 |
+|---|---|---|
+| 大小 | 2,192 B | **2,064 B** |
+| `PT_GNU_RELRO` | 有（`memsz=0xcd8`，含 0xbe0 bss） | **无** |
+| RW 段 | `filesz=0xf8 / memsz=0xcd8` | `filesz=0xf8 / memsz=0xf8` |
+| 段清单 | PHDR/LOAD×3/DYNAMIC/**RELRO**/GNU_PROP/STACK | PHDR/LOAD×3/DYNAMIC/GNU_PROP/STACK |
+
+修正命令只加一个参数：`-Wl,-z,norelro`。修正后的段结构与对方验证可用的载荷**同构**。
+
+### 同时修正的两处认知
+
+1. **`file_id` 槽位表得到第三方独立印证** —— 对方的清理脚本把 `tmmc.jit` / `jit.log` / `DIAC.csv` /
+   `history.txt` / `ver.txt` 硬编码进「永不删除」名单。这正好对上本仓库从 `libJiritsu.so 0x1236C`
+   跳转表解出的索引（0 = `tmmc.jit`、3 = `jit.log`），并补全了我们不知道的槽位。
+2. **返回码 130 不是「文件不存在」，是「nflasha6 已卸载」** —— 删掉 `libJit.so` 会让 Jiritsu
+   卸载整个分区，要发 `0x4002`(MOUNT) 重挂。本项目早期判断错了方向。
+
+### 另外记下两条安全红线
+
+- `0x4003`(FORMAT) / `0x4006`(FIRMUP) 会卡死服务，**不要发**；
+- `0xff01` 在 ZV-E10 上可用于往任意路径 `put`，在 FX30 上全部返回 128 —— **最明确的机型差异，尚未解释**。
+  本项目涉及写文件一律走 Jiritsu，不依赖 `0xff01`。
+
+详见 [`docs/15-payload-elf-rules.md`](docs/15-payload-elf-rules.md) 与
+[`docs/04-dead-ends.md`](docs/04-dead-ends.md) §十九～§二十一。
+
+---
+
 ## 未能解决的问题（欢迎协作）
 
 **目标**：为 FX30 启用电子快门连拍（参考 FX3 的四档连拍、A6700 的电子快门 11fps）。
@@ -479,7 +526,10 @@ docs/11-drive-mode-ids.md    BKID 名称→数字 id、三机型对照、两代�
 docs/12-property-accessor-table.md  属性访问器表：id → .bss 地址 ⭐
 docs/13-flash-layout.md      官方 partinf.conf / mount.conf 分区与挂载
 docs/14-peer-crosscheck.md   与上游研究者的通道互证（跨机型逐条对照）⭐
+docs/15-payload-elf-rules.md dlopen 载荷的 ELF 结构规则（五条铁律 + 症状对照）⭐
 tools/                   只读探测脚本（Python / PowerShell）
+tools/offline/           纯静态分析（名称→id→.bss 地址链）
+tools/payload/           载荷构建与结构校验（zig + ELF 自检，不含写入脚本）
 NOTICE                   来源与致谢
 ```
 
@@ -492,6 +542,7 @@ NOTICE                   来源与致谢
 - 本仓库的工具**只发送读请求**，不写任何数据。
 - 会话**不可复用**：每次操作应「相机 MSC → 一次运行内完成 → 干净退出 → 断电/拔插」，否则残留状态会让后续认证失败。
 - `0x60F` 区间会使端点进入异常状态，应回避。
+- **`0x4003`(FORMAT) / `0x4006`(FIRMUP) 不要发** —— 同族平台实测会卡死服务。
 - 若要写备份（`cmd 0x02`），务必先留完整原始备份；**备份区写坏可能影响相机启动，该层风险未评估**。
 
 ---
@@ -502,8 +553,9 @@ NOTICE                   来源与致谢
 - [YuuLuo/a7c2-service-preload](https://github.com/YuuLuo/a7c2-service-preload) — Jiritsu 通道与协议细节（A7C II 2.01）
 - [Himpq/FireHydrant](https://github.com/Himpq/FireHydrant) — A6700 的内存访问方法与移植方法论
 - [xyzhangxin/sony-a6700-powerful](https://github.com/xyzhangxin/sony-a6700-powerful) — A6700 服务通道与 Pico 路线
+- [nolan2628/Sony-ZVE-10-Camtool](https://github.com/nolan2628/Sony-ZVE-10-Camtool) — dlopen 载荷的 ELF 结构规则、`file_id` 槽位互证、`0x4002` 重挂语义
 
-完整相关开源项目目录（含 A7C2-FL23、ILCE-7M4-RE、Recipe Lab 等共 7 项）见 [`docs/06-related-projects.md`](docs/06-related-projects.md)。
+完整相关开源项目目录（核心 16 项，含 A7C2 生态 8 个衍生仓库）见 [`docs/06-related-projects.md`](docs/06-related-projects.md)。
 
 非官方项目，与 Sony 无关。固件研究存在风险，后果自负。
 
@@ -532,4 +584,6 @@ A full command map of `pFunc=0x40` is documented, including a 2.25 MB backup blo
 
 **Conclusion so far:** the burst feature is not missing from FX30 — its firmware contains every related name, list entry and constant, its `.text` is actually 11,128 bytes *larger* than FX3's, and a symmetric instruction-level diff shows 19.41% vs 19.38% unique code (net 10,848 ≈ the size delta), i.e. a **function-level reshuffle**, not per-function rewrites. The remaining gate is runtime, and it can only be read by executing code inside the camera or by reading the `/setting` partition. See `docs/11`, `docs/12`, `docs/13`. No firmware binaries or device-unique data are included.
 
-**Cross-check with upstream (2026-10-24):** the author of `xyzhangxin/sony-a6700-powerful` published their A6700 three-step sequence in Issue #2. Compared against FX30 6.00, the backbone matches **byte for byte** — same `pFunc=0x40` / `category=0x1001`, same `{area, file_id, transfer_mode}` payload prefix (`[0, 2, 0] + data`), and `0x4007 / file_id=2` writing `/tmp/jiritsu/libJit.so`. They cautioned that their loader path was only verified on A6700 2.00 and that FX30 needs separate confirmation, and that A6700 payloads must not be reused directly. Both points are now settled on our side: FX30 6.00 is **verified on-device** (`res=0`, and a self-written side-effect file read back proves the code ran), and we did not reuse their payload — we wrapped the stock `libssp.so` and later built a standalone 2,192-byte `.so` with zig. Two numbering details remain open: they describe `0x4010 / file_id=0` as a "reader configuration" and `0x4008 / file_id=0` as retrieving the result, whereas our disassembly of `get_jiritsu_area_filename()` maps slot 0 to `tmmc.jit` and we close the loop on slot 3 (`jit.log`); both may be the same thing under different names. Finally, their "260 sectors" (~133 KB) indicates access at the **block-device sector layer**, whereas this repository works at the filesystem and property-semantics layers — a difference in level, not a contradiction. See `docs/14-peer-crosscheck.md`.
+**Cross-check with upstream (2026-10-24):** the author of `xyzhangxin/sony-a6700-powerful` published their A6700 three-step sequence in Issue #2. Compared against FX30 6.00, the backbone matches **byte for byte** — same `pFunc=0x40` / `category=0x1001`, same `{area, file_id, transfer_mode}` payload prefix (`[0, 2, 0] + data`), and `0x4007 / file_id=2` writing `/tmp/jiritsu/libJit.so`. They cautioned that their loader path was only verified on A6700 2.00 and that FX30 needs separate confirmation, and that A6700 payloads must not be reused directly. Both points are now settled on our side: FX30 6.00 is **verified on-device** (`res=0`, and a self-written side-effect file read back proves the code ran), and we did not reuse their payload — we wrapped the stock `libssp.so` and later built a standalone 2,064-byte `.so` with zig. Two numbering details remain open: they describe `0x4010 / file_id=0` as a "reader configuration" and `0x4008 / file_id=0` as retrieving the result, whereas our disassembly of `get_jiritsu_area_filename()` maps slot 0 to `tmmc.jit` and we close the loop on slot 3 (`jit.log`); both may be the same thing under different names. Finally, their "260 sectors" (~133 KB) indicates access at the **block-device sector layer**, whereas this repository works at the filesystem and property-semantics layers — a difference in level, not a contradiction. See `docs/14-peer-crosscheck.md`.
+
+**dlopen payload ELF rules (2026-10-24, learned from a third body):** an ecosystem sweep turned up `nolan2628/Sony-ZVE-10-Camtool` for the ZV-E10, which independently proves that Jiritsu-based `dlopen` is **not** an A6700/A7C2 exclusive — an entry-level body runs it too, and it gets a full shell (440-byte payload doing `fork` → `execve("/bin/sh")`) with `Uid: 0 0 0 0` and `CapEff: ffffffffffffffff`. Their five hard-won rules for a loadable payload: (1) `.dynamic` must sit in a **writable** `PT_LOAD` — glibc writes `l_info`/`DT_DEBUG` back into it and SIGSEGVs otherwise, taking `im.elf` and the USB connection with it; (2) `PT_GNU_STACK` must be present; (3) `vaddr ≡ off (mod p_align)`; (4) the constructor entry's instruction-set bit must match the code mode (ARM32 Thumb `|1` / ARM `|0`); (5) **do not carry `PT_GNU_RELRO`** — `_dl_protect_relro` mprotects whole pages, so it silently freezes `.dynamic` and any `.bss` sharing that page. Rule 5 hit our own artifact: the default link added RELRO over `0x20000..0x21000`, harmless for the current all-stack stage-1 but fatal for any stage-2 global buffer. Adding `-Wl,-z,norelro` dropped the file from 2,192 to **2,064 bytes** and made its segment layout isomorphic to their proven 440-byte payload. Two by-products: their cleanup whitelist independently confirms our `file_id` slot table (0 = `tmmc.jit`, 3 = `jit.log`), and return code **130 means nflasha6 was unmounted**, not "file missing" — deleting `libJit.so` requires a `0x4002` (MOUNT) re-mount. Their docs also flag `0x4003` (FORMAT) and `0x4006` (FIRMUP) as service-freezing, and use `0xff01` to `put` files at arbitrary paths — something FX30 answers with 128 for every attempt, the clearest unresolved body-to-body divergence so far. See `docs/15-payload-elf-rules.md`.
