@@ -181,24 +181,40 @@ class AesCbcCrypter(AesCrypter):
 
 **目标**：对明文 ext4 镜像 `nflasha15` 做「替换一个文件内容」，产出能用的镜像。
 
+> ### ⚠️ T2 修订（2026-10-25 本机环境实测）
+>
+> | 环境 | 结果 |
+> |---|---|
+> | **WSL** | ❌ **被安全策略禁止**（`wsl.exe` 在程序黑名单，不可用、不可绕过、不要尝试替代路径） |
+> | `debugfs` / `e2fsck` | ❌ 不在 PATH |
+> | 7-Zip | ✅ 支持 `ext/ext2/ext3/ext4/img`，但**只读**（可列目录/取文件，不能写） |
+>
+> ⇒ **必须纯 Python 实现**，不得依赖任何外部工具。
+>
+> ### 范围收窄（重要）
+>
+> - **只做「同长度原地改写」**：新版 `appFw.so` 与原文件**字节数完全相同**，
+>   只替换数据块里的差异部分 —— **不动 inode、不动 block bitmap、不动 i_size、不动 extent**
+> - **不做变长替换**（会牵动 inode/bitmap/extent，风险与工作量都大，我们也不需要）
+>
+> 理由：实际改动只是 `.text` 里几条 4 字节指令，文件长度天然不变。
+
 **步骤**：
 
-1. 确认工具可用性：本机是否有 `debugfs` / `e2fsprogs` / WSL？
-   - 有 → 用 `debugfs -w` 的 `write`/`rm` 完成
-   - 没有 → 评估纯 Python 方案（读 superblock / inode / block bitmap，原地改写）
-2. **优先做「原地等长替换」**：新文件长度 ≤ 原文件，直接写占用的块，不改 inode 的 size 以外的元数据（若变短需更新 i_size 与 block bitmap）
-3. 输出工具 `T20_ext4_replace.py`：
-   ```
-   --image <nflasha15> --path /lib/appFw.so --new <本地文件> --out <新镜像>
-   ```
+1. 解析 superblock（偏移 `1024`，magic `0xEF53`）→ `block_size` / `inode_size` / `blocks_per_group` / `inode_table` 位置
+2. 读 group descriptor table → 定位 inode table 的物理块
+3. 按路径 `/lib/appFw.so` 逐级解析目录项（`inode(4) rec_len(2) name_len(1) file_type(1) name`）拿到目标 inode 号
+4. 读 inode → 解析 **extent tree**（`extent_header` + 叶子 `extent`）→ 得到「逻辑块 → 物理块」映射
+5. 按 extent 拼接出原文件内容；与新版逐字节对比，**只写有差异的物理块**
+6. 交叉校验：用 7-Zip 只读能力列出 `/lib/appFw.so` 并确认大小；再用本脚本重新解析取回内容算 sha256
 
 **验收**：
 
 | 验收 | 判据 |
 |---|---|
 | A 零改动 | 不替换任何文件时，输出镜像 sha256 == 输入 |
-| B 等长替换 | 替换为同长度内容后，`debugfs`/`e2fsck -fn` 检查通过；用 `debugfs dump` 取回内容 == 新文件 |
-| C 变长替换 | 换成更短内容时，镜像仍可正常读取（`e2fsck -fn` 无 error） |
+| B 同长度替换 | 替换后：① 7-Zip 能正常列出该文件且**大小一致**；② 重新解析取回内容 sha256 == 新文件 sha256；③ 报告差异块数（应远小于总块数） |
+| C 不碰元数据 | 输出镜像与输入镜像的**差异字节偏移**全部落在数据块范围内（不落在超级块/inode 表/位图区） |
 
 ---
 
