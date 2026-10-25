@@ -1,0 +1,190 @@
+# 任务包 · FX30 固件静态核验（只读，7 项）
+
+> 把这一整段发给执行方即可。全部为**只读静态分析**，不接相机、不改文件、不联网。
+
+---
+
+## 0. 环境（先做一次，确认可用）
+
+```bash
+# 工作目录
+cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack
+
+# Python（已装 pyelftools / capstone / numpy / pycryptodome，不要用别的解释器）
+export PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+
+# 自检：三个依赖都要能 import
+"$PY" -c "import elftools, capstone, numpy; print('deps OK')"
+```
+
+三个依赖缺任何一个就停下回报，不要尝试自行安装。
+
+---
+
+## 1. 任务清单
+
+按顺序执行。**每做完一个，先按「回报格式」发一条，再做下一个。**
+
+| # | 任务 | 脚本 | 预计耗时 |
+|---|---|---|---|
+| 1 | 属性表 stride 穷举 | `audit/tasks/T4_prop_stride.py` | 1~2 min |
+| 2 | 历史 log 时间线 | `audit/tasks/T5_log_timeline.py` | < 10 s |
+| 3 | 错误码/地址审计 | `audit/tasks/T8_addr_audit.py` | < 30 s |
+| 4 | 四机型镜像清单 | `audit/tasks/T6_dump_manifest.py` | 3~8 min |
+| 5 | 全仓 ELF 清单 | `audit/tasks/T7_elf_inventory.py` | 1~3 min |
+| 6 | 符号差异复核 | `audit/tasks/T2_symbol_diff.py` | 1 min |
+| 7 | 指令 n-gram 重叠（**需先实现**） | 见任务 7 规格 | 30 min 实现 + 3 min 跑 |
+
+---
+
+### 任务 1 · 属性表 stride 穷举
+
+```bash
+cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack
+"$PY" -u audit/tasks/T4_prop_stride.py
+cat audit_raw/T4_prop_stride.txt
+```
+
+**验收**：FX30 段必须同时出现下面三条（缺一条就停下回报）：
+
+| stride | 项数 | id 范围 |
+|---|---|---|
+| `0x010` | 7,792 | 0x0001..0x1E70 |
+| `0x018` | 5,407 | 0x0001..0x151F |
+| `0x058` | 572 | 0x035C..0x0597 |
+
+（注：`0x058` 是 572 项而不是文档别处写的 2,692——那是另一个脚本用不同判据得到的数，
+本脚本只找「最长严格连续段」。两个数都真实，口径不同。）
+
+**回报**：四机型各自前三条链的 `stride / 项数 / 首址`，并说明 **A7C2 是否有 `0x018` 链**。
+
+---
+
+### 任务 2 · 历史 log 时间线
+
+```bash
+"$PY" -u audit/tasks/T5_log_timeline.py
+```
+
+**验收**：`audit_raw/T5_logs.csv` 有 30 行左右。
+
+**回报**：`GET_VERSION` 出现过的**所有不同取值**（去重后列出来），以及各自出现在哪几个 log。
+
+---
+
+### 任务 3 · 错误码/地址审计
+
+```bash
+"$PY" -u audit/tasks/T8_addr_audit.py
+tail -30 audit_raw/T8_addr_report.txt
+```
+
+**验收**：报告给出三类计数（奇数位十六进制 / 落在段空隙 / 段分布）。
+
+**回报**：三类计数 + 前 10 条「奇数位」和「空隙」的 `文件:行号`。
+
+---
+
+### 任务 4 · 四机型镜像清单
+
+```bash
+"$PY" -u audit/tasks/T6_dump_manifest.py
+```
+
+**验收**：`audit_raw/T6_manifest_{FX30,FX3,A6700,A7C2}.csv` 四份都在。
+
+**回报**：四个机型的文件数；`T6_same_name.csv` 里 `identical_across=yes` 的行数。
+
+---
+
+### 任务 5 · 全仓 ELF 清单
+
+```bash
+"$PY" -u audit/tasks/T7_elf_inventory.py
+```
+
+**验收**：`audit_raw/T7_elf.csv` 行数 > 500。
+
+**回报**：ELF 总数、`T7_elf_nosym.txt` 的行数。
+
+---
+
+### 任务 6 · 符号差异复核
+
+```bash
+"$PY" -u audit/tasks/T2_symbol_diff.py
+```
+
+**验收**：`FX30 vs FX3` 必须打印 `FX3独有 0`。
+
+**回报**：四行（每个机型符号数）+ 六行（每对独有数）。
+
+---
+
+### 任务 7 · 指令 n-gram 重叠（需实现）
+
+**目的**：给出一个**不受函数切分影响**的同源度指标。
+（现有函数级指标在 A7C2 上失效，因为它的函数切分密度是 FX30 的 2.4 倍。）
+
+**要实现的脚本**：`audit/tasks/T1c_ngram.py`
+
+**规格（严格按此实现）**：
+
+1. 读 `fw/<dir>/firmware.tar_unpacked/0700_part_image/dev/nflasha15_unpacked/lib/appFw.so` 的 `.text`；
+2. 用 capstone（`CS_ARCH_ARM64, CS_MODE_ARM`）反汇编，逐条归一化：
+   `sig = ins.mnemonic + " " + re.sub(r'#?-?0x[0-9a-fA-F]+|#?-?\d+', '', ins.op_str)`
+3. **滑动取连续 8 条指令**，把 8 个 sig 用 `\n` 连接后取 SHA-1 前 8 字节 → 得到一个 n-gram；
+   步长 1（每条指令都起一个窗口）；
+4. 该机型的 n-gram 集合 = 所有窗口的无序集合（去重）；
+5. 两两计算 **Jaccard = |A∩B| / |A∪B|**；
+6. 输出 `audit_raw/T1c_summary.csv`（列：A,B,grams_A,grams_B,intersection,jaccard）
+   和 `audit_raw/T1c_detail_<A>_vs_<B>.txt`（前 20 个只在单侧出现的窗口的 sig 串，便于人工看）。
+
+**四机型目录**：
+```
+FX30  -> fw/out
+FX3   -> fw/fx3out
+A6700 -> fw/a6700out
+A7C2  -> fw/a7c2out
+```
+
+**验收**：`FX30 vs FX3` 的 Jaccard 必须 **> 0.80**。
+低于 0.80 → 归一化写得不对（检查是否漏了去立即数），停下来回报，不要继续。
+
+**回报**：四对的 `jaccard` 数值（一行一对），以及 `grams_A / grams_B` 数量。
+
+---
+
+## 2. 全局禁止
+
+- ❌ 不要连接相机、不要运行任何 `probe_*.py`
+- ❌ 不要修改 / 删除 `fw/` 下任何文件
+- ❌ 不要修改 `audit/tasks/` 下的脚本（发现 bug 就回报，不要自己改判据）
+- ❌ 不要 git commit / push
+- ❌ 不要写结论（如「说明 A7C2 与 FX30 同源」）—— 只回数字
+
+---
+
+## 3. 回报格式（每条照抄这个结构）
+
+```
+[任务 N] 完成 / 失败
+实际命令：（若与文档不同，贴出来）
+验收：通过 / 不通过（贴关键行）
+关键数字：（表格或列表）
+异常：（报错原文、数字与预期不符的地方）
+```
+
+---
+
+## 4. 预期结果对照（用于自检，不是让你判断）
+
+| 项 | 预期 | 不符时要做什么 |
+|---|---|---|
+| T4 FX30 | 0x10/7,792 + 0x18/5,407 + 0x58/572 三条齐全 | 停下回报 |
+| T5 log 数 | 约 30 份 | 说明实际数量 |
+| T6 FX30 文件数 | 4,296 | 说明实际数量 |
+| T6 A6700 文件数 | 50,817 | 说明实际数量 |
+| T7 ELF 总数 | > 500 | 说明实际数量 |
+| T2 FX30 vs FX3 | FX3 独有 = 0 | 停下回报 |
+| T1c FX30 vs FX3 | Jaccard > 0.80 | 停下回报 |
