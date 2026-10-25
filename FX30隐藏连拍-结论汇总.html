@@ -138,6 +138,12 @@ footer{margin-top:80px;padding-top:26px;border-top:1px solid var(--line);
     唯一没解决的是：<strong>菜单里看不到它</strong>，所以没法和别的拍摄模式来回切。
   </p>
 
+  <div style="margin:14px 0;padding:12px 16px;background:#fff3e0;border:1px solid #e65100;border-radius:8px;color:#7a2e00;font-size:14px;line-height:1.6;">
+    <strong>⚠️ 仅固件 6.00 有效，6.01 已封堵。</strong> 6.01 固件对 PDT 设置区写入加了内容校验，
+    任何字段改动都返回 <code>129</code>（原样写回才 <code>res=0</code>，他人 6.01 实机三组对照确认）。
+    <strong>开启成功后切勿升级固件，升级即失效且无法再写回。</strong>
+  </div>
+
   <div class="stats">
     <div class="stat ok">
       <div class="n">3<small> 次</small></div>
