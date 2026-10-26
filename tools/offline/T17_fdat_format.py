@@ -12,7 +12,7 @@ T17_fdat_format.py · 第七期 T1：firmware.fdat 容器格式
   5) 统计 'ustar' 出现位置，确认 tar 是整段嵌入
 只读 fw/（只 open('rb')，不写回）。结果写 audit_raw/T17_task1_fdat.txt + tmp01 副本。
 用法：
-  "C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe" -u T17_fdat_format.py
+  "$PY" -u T17_fdat_format.py
 """
 import os
 import struct

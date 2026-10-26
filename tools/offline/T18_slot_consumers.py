@@ -11,7 +11,7 @@ T18_slot_consumers.py · 第七期 T17（doc 20 §六）：重定位驱动槽的
   4) 统计 .rela.dyn 里 addend 落在 0x8E58xxx（PRM 参数区）的重定位数量与页分布
 只读 fw/。结果写 audit_raw/T18_task17_slots.txt + tmp01 副本。
 用法：
-  "C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe" -u T18_slot_consumers.py
+  "$PY" -u T18_slot_consumers.py
 """
 import collections
 import glob

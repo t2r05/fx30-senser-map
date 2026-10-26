@@ -2,15 +2,15 @@
 
 > 2026-10-25
 > **背景剧变**：外部项目 `Himpq/FireHydrant` 已在 A6700 2.00 上实机成功（Cine EI 冷启动生效）。
-> 其方法论指出我方一直找错了对象 —— 详见 `audit/30-FireHydrant分析-方法完全不同.md`
+> 其方法论指出我方一直找错了对象 —— 详见 `30-FireHydrant分析-方法完全不同.md`
 
 ---
 
 ## 0. 全局边界
 
 纯离线；不接相机；不改 `fw/`；新脚本 `T22_` 前缀；不 git；不下结论；候选 > 100 先收窄并说明依据。
-Python：`C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe`
-工作目录：`F:\Ai\WorkBuddy\2026-10-20-22-22-33\fx30_hack`
+Python：`$PY`
+工作目录：`$REPO`
 
 ---
 
@@ -151,7 +151,7 @@ A6700 的 Cine EI 补丁构成（来自其 `CINEEI_PATCH_DETAILS_2026-10-25.md`�
 **数据**（表）
 
 **证据**
-- 脚本：audit/tasks/T22_xxx.py → audit_raw/T22_xxx.txt
+- 脚本：内部脚本（未公开） → audit_raw/T22_xxx.txt
 - 关键地址：
 
 **置信度**：✅ / 🟡 / ⬜

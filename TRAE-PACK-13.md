@@ -11,8 +11,8 @@
 
 纯离线；不接相机；不改 `fw/`；新脚本 `T24_` 前缀；不 git；不下结论；候选 > 100 先收窄并说明依据。
 
-Python：`C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe`
-工作目录：`F:\Ai\WorkBuddy\2026-10-20-22-22-33\fx30_hack`
+Python：`$PY`
+工作目录：`$REPO`
 
 ---
 
@@ -183,7 +183,7 @@ A7CR 在 `0x4B2F209` 处有 2 字节 `0000 → 0101`（两个选择能力）。
 **数据**（表）
 
 **证据**
-- 脚本：audit/tasks/T24_xxx.py → audit_raw/T24_xxx.txt
+- 脚本：内部脚本（未公开） → audit_raw/T24_xxx.txt
 - 关键偏移：
 
 **置信度**：✅ / 🟡 / ⬜

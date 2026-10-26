@@ -8,10 +8,10 @@
 
 ```bash
 # 工作目录
-cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack
+cd $REPO
 
 # Python（已装 pyelftools / capstone / numpy / pycryptodome，不要用别的解释器）
-export PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+export PY="/path/to/python3.11"
 
 # 自检：三个依赖都要能 import
 "$PY" -c "import elftools, capstone, numpy; print('deps OK')"
@@ -27,12 +27,12 @@ export PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Script
 
 | # | 任务 | 脚本 | 预计耗时 |
 |---|---|---|---|
-| 1 | 属性表 stride 穷举 | `audit/tasks/T4_prop_stride.py` | 1~2 min |
-| 2 | 历史 log 时间线 | `audit/tasks/T5_log_timeline.py` | < 10 s |
-| 3 | 错误码/地址审计 | `audit/tasks/T8_addr_audit.py` | < 30 s |
-| 4 | 四机型镜像清单 | `audit/tasks/T6_dump_manifest.py` | 3~8 min |
-| 5 | 全仓 ELF 清单 | `audit/tasks/T7_elf_inventory.py` | 1~3 min |
-| 6 | 符号差异复核 | `audit/tasks/T2_symbol_diff.py` | 1 min |
+| 1 | 属性表 stride 穷举 | `内部脚本（未公开）` | 1~2 min |
+| 2 | 历史 log 时间线 | `内部脚本（未公开）` | < 10 s |
+| 3 | 错误码/地址审计 | `内部脚本（未公开）` | < 30 s |
+| 4 | 四机型镜像清单 | `内部脚本（未公开）` | 3~8 min |
+| 5 | 全仓 ELF 清单 | `内部脚本（未公开）` | 1~3 min |
+| 6 | 符号差异复核 | `内部脚本（未公开）` | 1 min |
 | 7 | 指令 n-gram 重叠（**需先实现**） | 见任务 7 规格 | 30 min 实现 + 3 min 跑 |
 
 ---
@@ -40,8 +40,8 @@ export PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Script
 ### 任务 1 · 属性表 stride 穷举
 
 ```bash
-cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack
-"$PY" -u audit/tasks/T4_prop_stride.py
+cd $REPO
+"$PY" -u 内部脚本（未公开）
 cat audit_raw/T4_prop_stride.txt
 ```
 
@@ -63,7 +63,7 @@ cat audit_raw/T4_prop_stride.txt
 ### 任务 2 · 历史 log 时间线
 
 ```bash
-"$PY" -u audit/tasks/T5_log_timeline.py
+"$PY" -u 内部脚本（未公开）
 ```
 
 **验收**：`audit_raw/T5_logs.csv` 有 30 行左右。
@@ -75,7 +75,7 @@ cat audit_raw/T4_prop_stride.txt
 ### 任务 3 · 错误码/地址审计
 
 ```bash
-"$PY" -u audit/tasks/T8_addr_audit.py
+"$PY" -u 内部脚本（未公开）
 tail -30 audit_raw/T8_addr_report.txt
 ```
 
@@ -88,7 +88,7 @@ tail -30 audit_raw/T8_addr_report.txt
 ### 任务 4 · 四机型镜像清单
 
 ```bash
-"$PY" -u audit/tasks/T6_dump_manifest.py
+"$PY" -u 内部脚本（未公开）
 ```
 
 **验收**：`audit_raw/T6_manifest_{FX30,FX3,A6700,A7C2}.csv` 四份都在。
@@ -100,7 +100,7 @@ tail -30 audit_raw/T8_addr_report.txt
 ### 任务 5 · 全仓 ELF 清单
 
 ```bash
-"$PY" -u audit/tasks/T7_elf_inventory.py
+"$PY" -u 内部脚本（未公开）
 ```
 
 **验收**：`audit_raw/T7_elf.csv` 行数 > 500。
@@ -112,7 +112,7 @@ tail -30 audit_raw/T8_addr_report.txt
 ### 任务 6 · 符号差异复核
 
 ```bash
-"$PY" -u audit/tasks/T2_symbol_diff.py
+"$PY" -u 内部脚本（未公开）
 ```
 
 **验收**：`FX30 vs FX3` 必须打印 `FX3独有 0`。
@@ -126,7 +126,7 @@ tail -30 audit_raw/T8_addr_report.txt
 **目的**：给出一个**不受函数切分影响**的同源度指标。
 （现有函数级指标在 A7C2 上失效，因为它的函数切分密度是 FX30 的 2.4 倍。）
 
-**要实现的脚本**：`audit/tasks/T1c_ngram.py`
+**要实现的脚本**：`内部脚本（未公开）`
 
 **规格（严格按此实现）**：
 
@@ -159,7 +159,7 @@ A7C2  -> fw/a7c2out
 
 - ❌ 不要连接相机、不要运行任何 `probe_*.py`
 - ❌ 不要修改 / 删除 `fw/` 下任何文件
-- ❌ 不要修改 `audit/tasks/` 下的脚本（发现 bug 就回报，不要自己改判据）
+- ❌ 不要修改 `内部脚本（未公开）` 下的脚本（发现 bug 就回报，不要自己改判据）
 - ❌ 不要 git commit / push
 - ❌ 不要写结论（如「说明 A7C2 与 FX30 同源」）—— 只回数字
 

@@ -12,13 +12,13 @@
 |---|---|
 | 不连接相机 | 纯离线 |
 | 不改 `fw/` 下任何文件 | 只读；要写就复制到 `tmp01/` |
-| 新脚本 `T21_` 前缀 | 放 `audit/tasks/` |
+| 新脚本 `T21_` 前缀 | 放 `内部脚本（未公开）` |
 | 不 git | 我方统一提交 |
 | 不下结论 | 只回地址、偏移、表结构、计数 |
 | 候选 > 100 立刻收窄 | 并说明收窄依据 |
 
-Python：`C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe`
-工作目录：`F:\Ai\WorkBuddy\2026-10-20-22-22-33\fx30_hack`
+Python：`$PY`
+工作目录：`$REPO`
 
 ---
 
@@ -181,7 +181,7 @@ T1+T2 是**同一条链路**，必须连着做；单独做 T1 价值不大。
 **数据**（表：基址 / 条目数 / 步长 / 结构 / 数值列）
 
 **证据**
-- 脚本：audit/tasks/T21_xxx.py → audit_raw/T21_xxx.txt
+- 脚本：内部脚本（未公开） → audit_raw/T21_xxx.txt
 - 关键地址与偏移：
 
 **置信度**：✅ / 🟡 / ⬜

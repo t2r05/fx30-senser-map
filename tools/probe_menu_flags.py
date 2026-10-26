@@ -5,7 +5,7 @@ probe_menu_flags.py — 试验「菜单可见性标志」：把 FX3 有、FX30 �
 
 ===== 写操作（设置区 PDT，不碰固件）=====
 
-## 背景：来自 FX30↔FX3 PDT 对齐（见 audit/16）
+## 背景：来自 FX30↔FX3 PDT 对齐（见 16-FX30-FX3-PDT对齐结果.md）
 
 用 `delta = -560` 对齐两机型出厂备份后，发现 142 个差异字节，其中 84 字节构成
 **12 个「7 字节等值组」**。最强的 3 组同时满足 4 个条件：
@@ -133,6 +133,23 @@ def check_hasp(dev):
         return False
 
 
+def read_fw_version(dev):
+    """GET_VERSION (0x400D) —— 读固件版本。Ver 6.00 = `06 00 00 10`。
+    6.01 封堵 PDT 直写（内容校验返 129），本脚本只对 6.00 有效，非 6.00 中止。"""
+    h = HDR.pack(category=0x400D, command=0)
+    try:
+        res, data = dev.sendSenserPacket(PFUNC_ADJ, h)
+    except Exception as e:
+        p("[!] GET_VERSION 读取异常: %r" % (e,))
+        return None
+    if res != 0 or not data:
+        p("[!] GET_VERSION 失败 res=%s data=%r" % (res, data))
+        return None
+    p("[*] GET_VERSION (0x400D) -> res=%s len=%d  %s"
+      % (res, len(data), data.hex(" ")))
+    return data
+
+
 def read_mem1(dev, tag):
     h = HDR.pack(category=0x603, command=5)
     res, data = dev.sendSenserPacket(PFUNC_ADJ, h + b"\x01")
@@ -213,6 +230,13 @@ def main():
             dev = enter(driver)
             if not check_hasp(dev):
                 p("[!] 中止")
+                return
+
+            # 版本闸门：只对 Ver 6.00 有效，6.01 已封堵 PDT 直写
+            ver = read_fw_version(dev)
+            if ver is None or len(ver) < 2 or not (ver[0] == 0x06 and ver[1] == 0x00):
+                p("[!] 固件版本非 6.00（读到 %s）—— 中止，避免误写。"
+                  % (ver.hex(" ") if ver else "读取失败"))
                 return
 
             p("\n--- 1. 读当前 PDT ---")

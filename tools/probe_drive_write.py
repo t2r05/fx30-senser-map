@@ -186,6 +186,26 @@ def check_hasp(dev):
         return False
 
 
+def read_fw_version(dev):
+    """GET_VERSION (0x400D) —— 读固件版本。Ver 6.00 = `06 00 00 10`。
+
+    6.01 固件给 PDT 直写加了内容校验（改任何字段返回 129），本脚本只对
+    6.00 有效。因此任何写操作前必须先读版本，非 6.00 一律中止，绝不冒险。
+    """
+    h = HDR.pack(category=0x400D, command=0)
+    try:
+        res, data = dev.sendSenserPacket(PFUNC_ADJ, h)
+    except Exception as e:
+        p("[!] GET_VERSION 读取异常: %r" % (e,))
+        return None
+    if res != 0 or not data:
+        p("[!] GET_VERSION 失败 res=%s data=%r" % (res, data))
+        return None
+    p("[*] GET_VERSION (0x400D) -> res=%s len=%d  %s"
+      % (res, len(data), data.hex(" ")))
+    return data
+
+
 def read_mem1(dev, tag, stamp=""):
     h = HDR.pack(category=0x603, command=5)
     res, data = dev.sendSenserPacket(PFUNC_ADJ, h + b"\x01")
@@ -300,6 +320,14 @@ def main():
             dev = enter(driver)
             if not check_hasp(dev):
                 p("[!] HASP 校验失败 —— 中止本次会话")
+                return
+
+            # 版本闸门：只对 Ver 6.00 有效，6.01 已封堵 PDT 直写（内容校验返 129）
+            ver = read_fw_version(dev)
+            if ver is None or len(ver) < 2 or not (ver[0] == 0x06 and ver[1] == 0x00):
+                p("[!] 固件版本非 6.00（读到 %s）—— 中止，避免误写。"
+                  % (ver.hex(" ") if ver else "读取失败"))
+                p("[!] 本配方仅 Ver 6.00 有效；6.01 会封堵 PDT 直写。")
                 return
 
             p("\n--- 1. 读原始快照（回滚材料）---")

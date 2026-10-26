@@ -12,7 +12,7 @@ T15_prm_table.py · 第六期 T1：PRM 参数表结构 / 存储位置 / 字段�
 
 只读 fw/。结果写 audit_raw/T15_task1_prm.txt + tmp01 副本。
 用法：
-  "C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe" -u T15_prm_table.py
+  "$PY" -u T15_prm_table.py
 """
 import os
 import struct

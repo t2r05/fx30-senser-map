@@ -13,7 +13,7 @@
 | **不连接相机** | 本期 100% 纯离线静态分析。相机端实验由我方执行 |
 | **不运行任何 `probe_*.py`** | 那些会打开 USB 设备 |
 | **不改 `fw/` 下任何文件** | 只读 |
-| **不改 `audit/tasks/` 下既有 T11_* 脚本** | 要写新脚本就用 `T14_` 前缀 |
+| **不改 `内部脚本（未公开）` 下既有 T11_* 脚本** | 要写新脚本就用 `T14_` 前缀 |
 | **不 git commit / push** | 由我方统一提交 |
 | **不下结论性判断** | 只回数字、地址、偏移、字节片段（≤32 字节）、统计结果 |
 | **不输出大块固件二进制** | 允许标量值与短结构数组（如 `{6,7,4,0}`） |
@@ -21,10 +21,10 @@
 Python 一律用绝对路径：
 
 ```
-C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe
+$PY
 ```
 
-工作目录：`F:\Ai\WorkBuddy\2026-10-20-22-22-33\fx30_hack`
+工作目录：`$REPO`
 
 ---
 
@@ -123,7 +123,7 @@ fw/a6700out/.../SYSIPSX-DSLR/DZ/CX89500_ALLLANG.bin                             
 fw/a7c2out/.../SYSIPSX-DSLR/PP/CX89700_ALLLANG.bin                                    ← A7C2  2,390,264 B
 ```
 
-### 2.2 现有工具（`audit/tasks/`）
+### 2.2 现有工具（`内部脚本（未公开）`）
 
 `T11_arr.py` `T11_bl.py` `T11_cons.py` `T11_ctx.py` `T11_desc.py` `T11_dump.py`
 `T11_iduse.py` `T11_menu.py` `T11_pair.py` `T11_prop.py` `T11_prop_vis.py` `T11_ptr.py`
@@ -297,7 +297,7 @@ fw/a7c2out/.../SYSIPSX-DSLR/PP/CX89700_ALLLANG.bin                              
 | 表 | ... |
 
 **证据**
-- 脚本：audit/tasks/T14_xxx.py → audit_raw/T14_xxx.txt
+- 脚本：内部脚本（未公开） → audit_raw/T14_xxx.txt
 - 关键偏移/地址：...
 
 **置信度**：✅ 已确证 / 🟡 有证据但未闭环 / ⬜ 未完成

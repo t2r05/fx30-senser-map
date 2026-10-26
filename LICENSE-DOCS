@@ -1,18 +1,22 @@
-Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
-=================================================================
+Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)
+=====================================================================================
 
-适用范围：`docs/` 目录、根 `README.md`、`NOTICE`。
+适用范围：本仓库除 `tools/` 目录外的**全部内容** —— `docs/` 目录、根目录所有
+`.md`（编号文档 00–42、`README.md`、`NOTICE`、`FX30-连拍复现实操手册.md`、
+`TRAE-PACK-*.md`）、根目录 `*.html` 等。
 
 You are free to:
 
   **Share** — copy and redistribute the material in any medium or format
-  **Adapt** — remix, transform, and build upon the material for any purpose, even commercially.
+  **Adapt** — remix, transform, and build upon the material
 
 Under the following terms:
 
   **Attribution** — You must give appropriate credit, provide a link to the license, and
   indicate if changes were made. You may do so in any reasonable manner, but not in any way
   that suggests the licensor endorses you or your use.
+
+  **NonCommercial** — You may not use the material for commercial purposes.
 
   **ShareAlike** — If you remix, transform, or build upon the material, you must distribute
   your contributions under the same license as the original.
@@ -21,7 +25,7 @@ Under the following terms:
   that legally restrict others from doing anything the license permits.
 
 完整许可全文：
-https://creativecommons.org/licenses/by-sa/4.0/legalcode
+https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
 
 --------------------------------------------------------------------------
 

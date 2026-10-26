@@ -1,15 +1,15 @@
 # 任务包 · 第二期 · 属性表未解项独立验证（只读静态，5 项）
 
 > 发给执行方即可。全部为**只读静态分析**，不接相机、不改 `fw/`、不联网。
-> **第一期任务包（`audit/TRAE-PACK.md`）已完成**，本包是它的续集。
+> **第一期任务包（`TRAE-PACK.md`）已完成**，本包是它的续集。
 
 ---
 
 ## 0. 环境
 
 ```bash
-cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack
-export PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+cd $REPO
+export PY="/path/to/python3.11"
 "$PY" -c "import elftools, capstone, numpy; print('deps OK')"
 ```
 
@@ -19,10 +19,10 @@ export PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Script
 
 | 文件 | 内容 |
 |---|---|
-| `audit/10-属性表三代结构.md` | 三代表结构、更正过程、物证反汇编 |
-| `audit/tasks/attr_three_gen.py` | 四机型表定位 + `.bss` 导出（**已跑通，可直接改**） |
-| `audit/tasks/attr_table_v2.py` | FX30 全量 id→访问器导出 |
-| `audit/tasks/A7C2_attr_probe.py` | 连续 `.text` 指针链探测 |
+| `10-属性表三代结构.md` | 三代表结构、更正过程、物证反汇编 |
+| `内部脚本（未公开）` | 四机型表定位 + `.bss` 导出（**已跑通，可直接改**） |
+| `内部脚本（未公开）` | FX30 全量 id→访问器导出 |
+| `内部脚本（未公开）` | 连续 `.text` 指针链探测 |
 | `audit_raw/attr_three_gen.tsv` | 已产出的对照表 |
 
 **已知的三代布局（你要独立复现，不是照抄）**：
@@ -256,8 +256,8 @@ ls -la dump/*.bin 2>/dev/null
 
 - ❌ 不要连接相机、不要运行任何 `probe_*.py`
 - ❌ 不要修改 / 删除 `fw/` 下任何文件
-- ❌ 不要修改 `audit/tasks/` 下的既有脚本（发现 bug 就回报，不要自己改判据）
-  —— **新建脚本请放 `audit/tasks/` 下，文件名带 `T9_`/`T10_` 前缀**
+- ❌ 不要修改 `内部脚本（未公开）` 下的既有脚本（发现 bug 就回报，不要自己改判据）
+  —— **新建脚本请放 `内部脚本（未公开）` 下，文件名带 `T9_`/`T10_` 前缀**
 - ❌ 不要 git commit / push
 - ❌ 不要写结论性判断（如「说明 A7C2 与 FX30 同源」）—— 只回数字和反汇编证据
 - ❌ 不要把「看起来像」当成「已确认」—— 不确定就标 `不确定`
@@ -293,9 +293,9 @@ ls -la dump/*.bin 2>/dev/null
 
 ## 5. 与第一期的关系
 
-第一期任务包 `audit/TRAE-PACK.md` 的 7 项**已完成**，其中：
+第一期任务包 `TRAE-PACK.md` 的 7 项**已完成**，其中：
 
-- **任务 1（stride 穷举）** 报的 `0x58 / 572 项` 与 `audit/10` 的 `0x58 / 2,692 条` **不矛盾** ——
+- **任务 1（stride 穷举）** 报的 `0x58 / 572 项` 与 `10-属性表三代结构.md` 的 `0x58 / 2,692 条` **不矛盾** ——
   前者是「最长严格连续段长度」，后者是「全表条数」，口径不同。
   **本期的任务 1 用另一种方法复现，请不要沿用第一期的判据。**
 

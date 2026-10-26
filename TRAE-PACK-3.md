@@ -1,11 +1,11 @@
 # 任务包 · 第三期 · 「让隐藏连拍在菜单里显示出来」（只读静态，4 项）
 
 > 发给执行方即可。全部为**只读静态分析**，不接相机、不改 `fw/`、不联网。
-> **第二期任务包（`audit/TRAE-PACK-2.md`）已交付**；本期是它的续集，
+> **第二期任务包（`TRAE-PACK-2.md`）已交付**；本期是它的续集，
 > 目标从「解释已有事实」转向「**找出下一个可动手的靶点**」。
 >
 > ⚠️ **本期所有工具脚本已由我方验证可跑**（见 §2 命令清单），
-> 你可以直接用，不必重写。**新建脚本请放 `audit/tasks/`，文件名带 `T12_` 前缀。**
+> 你可以直接用，不必重写。**新建脚本请放 `内部脚本（未公开）`，文件名带 `T12_` 前缀。**
 
 ---
 
@@ -87,8 +87,8 @@ struct enum_item { char *name; uint32_t id; uint16_t code; };
 ### 2.1 环境自检（先跑这行，通不过就停下回报）
 
 ```bash
-cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack
-PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+cd $REPO
+PY="/path/to/python3.11"
 "$PY" -c "import elftools, capstone; print('deps OK')"
 ```
 
@@ -107,8 +107,8 @@ fw/out/firmware.tar_unpacked/0700_part_image/dev/nflasha15_unpacked/lib/appFw.so
 **① 解出任意属性 id 的 `.bss` 目标地址（10 个访问器桩全解）**
 
 ```bash
-cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack/audit/tasks
-PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+cd <内部脚本目录，未公开>
+PY="/path/to/python3.11"
 
 "$PY" T11_prop_vis.py ids 0x2AF,0x272,0x273,0x4B6,0x4B8,0x4BA,0x0C2C,0x0C2D,0x0C2E,0x0C33,0x0C30,0x0C31,0x0C32,0x0C3B
 ```
@@ -364,8 +364,8 @@ PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/pytho
 
 - ❌ 不要连接相机、不要运行任何 `probe_*.py`
 - ❌ 不要修改 / 删除 `fw/` 下任何文件
-- ❌ 不要修改 `audit/tasks/` 下**既有**脚本（发现 bug 就回报，不要自己改判据）
-  —— 新建脚本放 `audit/tasks/` 下，文件名带 `T12_` 前缀
+- ❌ 不要修改 `内部脚本（未公开）` 下**既有**脚本（发现 bug 就回报，不要自己改判据）
+  —— 新建脚本放 `内部脚本（未公开）` 下，文件名带 `T12_` 前缀
 - ❌ 不要 git commit / push
 - ❌ 不要下结论性判断（如「说明 A7C2 与 FX30 同源」）—— 只回数字和反汇编证据
 - ❌ 不要输出固件二进制片段或备份数据
@@ -396,6 +396,6 @@ PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/pytho
 
 | 期 | 状态 | 说明 |
 |---|---|---|
-| 第一期（`audit/TRAE-PACK.md`） | ✅ 已完成 | 跨机型指令级对齐、符号 diff |
-| 第二期（`audit/TRAE-PACK-2.md`） | 任务 1–4 待做，任务 5 已可结案 | 任务 5（`.bss` ↔ PDT `0x8EF80` 映射）**答案已给出**：PDT 是真值源，两个偏移存的是枚举表位置索引 |
-| **本期（`audit/TRAE-PACK-3.md`）** | 🔄 进行中 | 菜单可见性定位 |
+| 第一期（`TRAE-PACK.md`） | ✅ 已完成 | 跨机型指令级对齐、符号 diff |
+| 第二期（`TRAE-PACK-2.md`） | 任务 1–4 待做，任务 5 已可结案 | 任务 5（`.bss` ↔ PDT `0x8EF80` 映射）**答案已给出**：PDT 是真值源，两个偏移存的是枚举表位置索引 |
+| **本期（`TRAE-PACK-3.md`）** | 🔄 进行中 | 菜单可见性定位 |

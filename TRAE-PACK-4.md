@@ -1,8 +1,8 @@
 # 任务包 · 第四期 · FX30 ↔ FX3 的 PDT 结构级对齐（只读离线，3 项）
 
 > 发给外部执行方即可。**纯离线静态分析**：不接相机、不改 `fw/`、不联网、不 git 操作。
-> 工作目录：`F:\Ai\WorkBuddy\2026-10-20-22-22-33\fx30_hack`
-> 新建脚本放 `audit/tasks/` 下，文件名带 **`T13_`** 前缀。
+> 工作目录：`$REPO`
+> 新建脚本放 `内部脚本（未公开）` 下，文件名带 **`T13_`** 前缀。
 
 ---
 
@@ -171,15 +171,15 @@ python probe_drive_write.py --burst     # 写 0x8EF80=0x01 + 0x91690=0x01
 ## 5. 环境
 
 ```bash
-cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack
-PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+cd $REPO
+PY="/path/to/python3.11"
 "$PY" -c "import elftools, capstone, numpy; print('deps OK')"
 ```
 
 **Python 必须用上面这个绝对路径**，不要用裸 `python`。
 缺依赖就**停下回报**，不要自行安装。
 
-### 可复用的已有工具（`audit/tasks/` 下）
+### 可复用的已有工具（`内部脚本（未公开）` 下）
 
 | 脚本 | 用途 |
 |---|---|
@@ -219,7 +219,7 @@ PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/pytho
 
 - ❌ **不要连接相机**，不要运行任何 `probe_*.py`（那些会写真机）
 - ❌ 不要修改 / 删除 `fw/` 下任何文件
-- ❌ 不要修改 `audit/tasks/` 下**既有**脚本（发现 bug 就回报）
+- ❌ 不要修改 `内部脚本（未公开）` 下**既有**脚本（发现 bug 就回报）
   —— 新建脚本带 `T13_` 前缀
 - ❌ 不要 git commit / push
 - ❌ 不要下结论性判断 —— 只回数字、地址、字节片段、统计结果
@@ -241,9 +241,9 @@ PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/pytho
 
 | 期 | 主题 | 状态 |
 |---|---|---|
-| 第一期 `audit/TRAE-PACK.md` | 跨机型指令级对齐、符号 diff | ✅ 已完成 |
-| 第二期 `audit/TRAE-PACK-2.md` | 属性表未解项验证（任务 5 答案已给出） | 任务 1–4 待做 |
-| 第三期 `audit/TRAE-PACK-3.md` | 菜单可见性 `.bss` 靶点定位 | 🔄 进行中 |
+| 第一期 `TRAE-PACK.md` | 跨机型指令级对齐、符号 diff | ✅ 已完成 |
+| 第二期 `TRAE-PACK-2.md` | 属性表未解项验证（任务 5 答案已给出） | 任务 1–4 待做 |
+| 第三期 `TRAE-PACK-3.md` | 菜单可见性 `.bss` 靶点定位 | 🔄 进行中 |
 | **第四期（本包）** | **PDT 结构级对齐，找菜单列表字段** | 🔄 本期 |
 
 ⇒ 本期与第三期是**同一目标的两条路**：第三期找 `.bss` 靶点（需 dlopen），

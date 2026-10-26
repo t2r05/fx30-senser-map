@@ -17,7 +17,7 @@ T17_fdat_rebuild.py · 第七期 T1 实证：按解出的配方反向构造 fdat
 只读 fw/（open('rb')），不修改、不删除、不重新解包。
 结果写 audit_raw/T17_task1_rebuild.txt + tmp01 副本。
 用法：
-  "C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe" -u T17_fdat_rebuild.py
+  "$PY" -u T17_fdat_rebuild.py
 """
 import hashlib
 import os

@@ -13,7 +13,7 @@ T16_table_head.py · 从 0x3202FE4 回溯表头 + 用表头地址反查引用
        (b) adrp 页 + add/ldr 位移匹配（全 .text）
 只读 fw/。结果写 audit_raw/T16_table_head.txt + tmp01 副本。
 用法：
-  "C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe" -u T16_table_head.py
+  "$PY" -u T16_table_head.py
 """
 import collections
 import os

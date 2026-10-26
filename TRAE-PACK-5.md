@@ -1,8 +1,8 @@
 # 任务包 · 第五期 · 四个独立深挖方向（只读离线）
 
 > 发给外部执行方即可。**纯离线静态分析**：不接相机、不改 `fw/`、不联网、不 git。
-> 工作目录：`F:\Ai\WorkBuddy\2026-10-20-22-22-33\fx30_hack`
-> 新建脚本放 `audit/tasks/`，文件名带 **`T14_`** 前缀。
+> 工作目录：`$REPO`
+> 新建脚本放 `内部脚本（未公开）`，文件名带 **`T14_`** 前缀。
 
 ---
 
@@ -94,7 +94,7 @@ python probe_drive_write.py --burst    # 写 0x8EF80=0x01 + 0x91690=0x01
 ### 步骤
 
 1. **测 A6700 / A7C2 相对 FX30 的位移**（用 FX3 那套方法：锚点法 + 4KB 桶级打分，
-   参考 `audit/tasks/T13_pdt_align.py` 和 `T13_pdt_buckets.py`，**可直接复用**）。
+   参考 `内部脚本（未公开）` 和 `T13_pdt_buckets.py`，**可直接复用**）。
 2. 用测出的位移，把 FX30 的 3 个候选组映射到 A6700 / A7C2，读出对齐后的值。
 3. 填表：
 
@@ -156,8 +156,8 @@ python probe_drive_write.py --burst    # 写 0x8EF80=0x01 + 0x91690=0x01
 ### 工具（已存在，直接用）
 
 ```bash
-cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack/audit/tasks
-PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+cd <内部脚本目录，未公开>
+PY="/path/to/python3.11"
 "$PY" T11_cons.py --full 0x0C2C
 "$PY" T11_iduse.py --ctx 0x0C2C
 "$PY" T11_xscan.py 0x83461A4,0x83461A8,0x83461AC,0x8346300 --desc
@@ -236,8 +236,8 @@ PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/pytho
 ## 6. 环境
 
 ```bash
-cd /f/Ai/WorkBuddy/2026-10-20-22-22-33/fx30_hack
-PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
+cd $REPO
+PY="/path/to/python3.11"
 "$PY" -c "import elftools, capstone, numpy; print('deps OK')"
 ```
 
@@ -267,7 +267,7 @@ PY="C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/pytho
 
 - ❌ **不要连接相机**，不要运行任何 `probe_*.py`（那些会写真机）
 - ❌ 不要修改 / 删除 `fw/` 下任何文件
-- ❌ 不要修改 `audit/tasks/` 下**既有**脚本（发现 bug 就回报）
+- ❌ 不要修改 `内部脚本（未公开）` 下**既有**脚本（发现 bug 就回报）
   —— 新建脚本带 `T14_` 前缀
 - ❌ 不要 git commit / push
 - ❌ 不要下结论性判断 —— 只回数字、地址、字节值、统计结果

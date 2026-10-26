@@ -1,0 +1,16 @@
+# License
+
+本仓库采用**双许可**：
+
+| 内容 | 许可 | 详情 |
+|---|---|---|
+| 文档（`docs/`、根目录所有 `.md`、`*.html`） | **CC BY-NC-SA 4.0** | 见 [`LICENSE-DOCS`](LICENSE-DOCS) |
+| 工具（`tools/` 目录下的脚本） | **MIT** | 见 [`LICENSE-TOOLS`](LICENSE-TOOLS) |
+
+## 一句话概括
+
+- **文档**可自由分享、改编，但须署名、**不得商用**、衍生作品须同许可共享。
+- **脚本**可自由使用、修改、分发，几乎无限制（MIT）。
+
+完整条款以 `LICENSE-DOCS` / `LICENSE-TOOLS` 为准；使用边界声明见
+[`NOTICE`](NOTICE) 与 [`docs/17-disclaimer-and-boundaries.md`](docs/17-disclaimer-and-boundaries.md)。

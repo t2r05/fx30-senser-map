@@ -17,7 +17,7 @@ T15_t2_track.py · 第六期 T2 合并包（§8.3）：12 个 .bss 地址的「�
 
 只读 fw/。结果写 audit_raw/T15_task2_track.txt + tmp01 副本。
 用法：
-  "C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe" -u T15_t2_track.py
+  "$PY" -u T15_t2_track.py
 """
 import collections
 import os

@@ -13,13 +13,13 @@
 | 不连接相机 | 本期 100% 纯离线 |
 | 不运行 `probe_*.py` | 会打开 USB |
 | **不改 `fw/` 下任何文件** | 一切操作在 `tmp01/` 副本上 |
-| 新脚本 `T20_` 前缀 | 放 `audit/tasks/` |
+| 新脚本 `T20_` 前缀 | 放 `内部脚本（未公开）` |
 | 不 git commit / push | 我方统一提交 |
 | 不下结论 | 只回数字、地址、字节、比对结果 |
 | 单次中间文件 ≤ 2 GB | 磁盘余量有限 |
 
-Python：`C:/Users/Administrator/.workbuddy/binaries/python/envs/default/Scripts/python.exe`
-工作目录：`F:\Ai\WorkBuddy\2026-10-20-22-22-33\fx30_hack`
+Python：`$PY`
+工作目录：`$REPO`
 
 ---
 
@@ -115,7 +115,7 @@ class AesCbcCrypter(AesCrypter):
 
 ### 1.5 已有工具
 
-- `audit/tasks/T18_pack_fdat.py` —— 打包器（`--list` / `--verify` / `--replace`），零改动 sha256 验收通过
+- `内部脚本（未公开）` —— 打包器（`--list` / `--verify` / `--replace`），零改动 sha256 验收通过
 - `fw/decrypt_fdat_fast.py` —— 快速解密（numpy 批量 CBC，1.3 GB 约 15 秒）
 - `fw/fwtool/` —— 上游工具（unpack only）
 - `tmp01/updater_unpacked/` —— 升级程序（SquashFS 已解，58 文件，含 `uc_crc32sum.elf`）
@@ -256,7 +256,7 @@ T3（id 绑定） ← 第三，只影响「改哪个回调」的精度，不影�
 **数据**（表）
 
 **证据**
-- 脚本：audit/tasks/T20_xxx.py → audit_raw/T20_xxx.txt
+- 脚本：内部脚本（未公开） → audit_raw/T20_xxx.txt
 - 关键地址/偏移：
 - 比对结果（sha256 / e2fsck / 计数）
 
