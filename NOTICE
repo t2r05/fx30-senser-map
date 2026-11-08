@@ -1,7 +1,7 @@
 FX30 Service Mode Research
 ==========================
 
-本仓库是 ILME-FX30 固件 6.00 上 USB 服务会话（Senser / Jiritsu）的实测记录。
+本仓库是 ILME-FX30 固件 6.00 / 6.01 上 USB 服务会话（Senser / Jiritsu）的实测记录。
 
 > **首次使用请先读 [`docs/17-disclaimer-and-boundaries.md`](docs/17-disclaimer-and-boundaries.md)。**
 > 那里有完整的免责声明、脚本风险分级、危险命令清单和已知踩坑。
@@ -13,7 +13,7 @@ FX30 Service Mode Research
   仅包含研究方法、流程记录与主机侧代码。
 - 本项目与 Sony Corporation 无任何关联，不是 Sony 签名的更新，也不代表 Sony 立场。
 - 请尊重 Sony 知识产权与用户协议；**如 Sony 或其授权方要求，相关内容将立即下架**。
-- 结论仅对应 **ILME-FX30 Ver.6.00**；其他机型 / 其他固件版本须自行复测。
+- 结论对应 **ILME-FX30 Ver.6.00 与 6.01**；其他机型 / 其他固件版本须自行复测。
 
 ## 硬件风险
 
