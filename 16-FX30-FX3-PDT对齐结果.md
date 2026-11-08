@@ -1,5 +1,7 @@
 # 16 · FX30↔FX3 PDT 对齐结果（TRAE 第四期回收）
 
+> 📌 本文为研究过程记录。最新结论以 [README](README.md) 与 [docs/](docs/) 为准。
+
 > 2026-10-25 · 由外部执行方 TRAE 按 `TRAE-PACK-4.md` 完成
 > 纯离线静态分析，未接触相机。5 个脚本：`T13_pdt_align/buckets/cmp/subshift/const.py`
 

@@ -1,5 +1,7 @@
 # 43 · 运行时地址空间实证：appFw.so 就在载荷自己进程里
 
+> 📌 本文为研究过程记录。最新结论以 [README](README.md) 与 [docs/](docs/) 为准。
+
 > 2026-10-26 · 实机取证（FX30 · Ver.**6.00** · 载荷 `libJit_obs.so` mode=5/7）
 > 一句话：**appFw.so 基址 `0x7F40544000`，与载荷同进程（pid 535 `im.elf`），无 ASLR，`.bss` 可写。**
 
