@@ -27,3 +27,6 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# local tool archive (keys/tools), never published
+_probe/
