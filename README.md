@@ -30,6 +30,7 @@
 - **想让连拍出现在菜单里** → [`docs/19-菜单层解锁-7字节真机验收-2026-11-22.md`](docs/19-菜单层解锁-7字节真机验收-2026-11-22.md)
 - **想拍 3:2 open gate（6.00）** → [`docs/21-FX30-6.00-open-gate-三档全通-2026-11-27.md`](docs/21-FX30-6.00-open-gate-三档全通-2026-11-27.md)
 - 想了解边界 → [`docs/17-disclaimer-and-boundaries.md`](docs/17-disclaimer-and-boundaries.md)
+- **借鉴了谁、回馈了什么** → [`CREDITS.md`](CREDITS.md)
 
 ---
 ## ⚠️ 重要声明（请先读）
